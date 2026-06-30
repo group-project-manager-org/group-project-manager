@@ -1,3 +1,4 @@
+import { Geist_Mono } from "next/font/google";
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -8,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        Geist_Mono: ["var(--font-Geist_Mono)"],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
