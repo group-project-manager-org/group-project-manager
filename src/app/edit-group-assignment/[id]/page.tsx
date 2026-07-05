@@ -1,19 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { useSupabase } from '../../lib/supabaseClient'
+import { useSupabase } from '../../../lib/supabaseClient'
 import { useUser  } from "@clerk/nextjs";
 import Link from 'next/link'
-import UserNav from "../../components/UseNav";
+import UserNav from "../../../components/UseNav";
+import { use } from "react";
 import { useRouter } from 'next/navigation'
 
-export default function AddGrpAssignment() {
+
+export default function EditGrpAssignment({ params }: {params: Promise<{ id: string }>;
+}) {
+    const { id } = use(params);
+    console.log(id)
     const [name, setName] = useState('')
     const [dueDate, setDueDate] = useState('')
     const [members, setMembers] = useState('')
-    
+
     const supabase = useSupabase()
     const router = useRouter()
+
 
     const { user } = useUser();
     if(!user) {
@@ -30,7 +36,8 @@ export default function AddGrpAssignment() {
         e.preventDefault()
         const { error } = await supabase
         .from('projects')
-        .insert({ user_id: user.id, project_name: name, due_date: dueDate});
+        .update({ user_id: user.id, project_name: name, due_date: dueDate})
+        .eq('id', id);
         console.log(error);
         router.push('/')
     }
@@ -53,10 +60,10 @@ export default function AddGrpAssignment() {
         <section className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-16">
             <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                New Group Assignment
+                Edit Group Assignment
             </h1>
             <p className="text-slate-400">
-                Fill in the details below to create a new assignment for your group.
+                Fill in the details below to the edit assignment for your group.
             </p>
             </div>
 
@@ -107,7 +114,7 @@ export default function AddGrpAssignment() {
                 type = "submit"
                 className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#8B6FFF] to-[#6a4ee0] text-lg font-semibold font-geist-mono text-white shadow-lg shadow-[#8B6FFF]/30 transition-transform hover:scale-[1.02]"
             >
-                Create Assignment
+                Edit Assignment
             </button>
             </form>
         </section>

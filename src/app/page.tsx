@@ -33,8 +33,22 @@ const [projectsData, setProjectsData] = useState<any[]>([]);
   }
   }, [user]);
 
+  async function handleDelete(id: string) {
+    const response =  await supabase.from('projects').delete().eq('id', id)
+    const fetchProjects = async () => {
+        const {data, error} =  await supabase.from('projects').select()
+
+        if(error) {
+        console.error(error);
+        }
+        setProjectsData(data || []);
+      }
+      fetchProjects()
+  }
+
+  projectsData.sort((a, b)  => new Date(a["due_date"]).getTime() - new Date(b["due_date"]).getTime())
   const groupAssElements = projectsData.map((ass) => {
-    return <GroupAssignment key={ass["id"]} number={ass["id"]} assignmentName = {ass["project_name"]} dueDate = {ass["due_date"]} />;
+    return <GroupAssignment key={ass["id"]} id={ass["id"]} assignmentName = {ass["project_name"]} dueDate = {ass["due_date"]} handleDelete = {handleDelete}/>;
   });
 
   return (

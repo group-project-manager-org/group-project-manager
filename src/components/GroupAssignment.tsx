@@ -1,29 +1,27 @@
+import { RiDeleteBinLine } from "react-icons/ri";
+import { FaPencil } from "react-icons/fa6";
+import Link from 'next/link'
+
 type GroupAssignmentProps = {
-  number: number;
+  id: string;
   assignmentName: string;
   dueDate: string
+  handleDelete: (id: string) => void
 };
 
-export default function GroupAssignment({ number, assignmentName, dueDate }: GroupAssignmentProps) {
-  // mock progress for now — swap for real data later
-  const total = 5;
-  const done = Math.min(number, total);
-  const pct = Math.round((done / total) * 100);
-
+export default function GroupAssignment({ id, assignmentName, dueDate, handleDelete }: GroupAssignmentProps) {
   const today = new Date();
   const due = new Date(dueDate);
-  due.setHours(23, 59, 0, 0); // 5:00 PM
+  due.setHours(23, 59, 0, 0);
   const diffMs = due.getTime() - today.getTime();
-  console.log(today, due)
 
   const diffDays = Math.floor(diffMs/ (1000 * 60 * 60 * 24));
-
 
   return (
     <div className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-4 rounded-2xl border border-[#2C2650] bg-[#161229] p-4 transition-colors hover:border-[#8B6FFF]/50">
       {/* progress ring */}
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-[#2C2650]">
-        <span className="font-mono text-sm text-[#F4D58D]">{pct}%</span>
+        <span className="font-mono text-sm text-[#F4D58D]">10%</span>
       </div>
 
       <div className="min-w-0 flex-1">
@@ -49,9 +47,11 @@ export default function GroupAssignment({ number, assignmentName, dueDate }: Gro
           +
         </button>
       </div>
-
-      <button className="shrink-0 text-slate-500 hover:text-[#FF8A65]">
-        🗑
+      <Link href = {`/edit-group-assignment/${id}`} className="shrink-0 text-slate-500 hover:text-[#6a4ee0]">
+        <FaPencil size="1.5rem"/>
+      </Link> 
+      <button onClick = {() => {handleDelete(id)}} className="shrink-0 text-slate-500 hover:text-[#FF8A65]">
+        <RiDeleteBinLine size="1.5rem"/>
       </button>
     </div>
   );
