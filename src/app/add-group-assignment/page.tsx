@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useSupabase } from '../../lib/supabaseClient'
+import { useUser  } from "@clerk/nextjs";
 import Link from 'next/link'
 import UserNav from "../../components/UseNav";
 
@@ -8,16 +10,28 @@ export default function AddGrpAssignment() {
     const [name, setName] = useState('')
     const [dueDate, setDueDate] = useState('')
     const [members, setMembers] = useState('')
+    const supabase = useSupabase()
+
+    const { user } = useUser();
+    if(!user) {
+        alert("You must login first!!!!")
+        return
+    }
 
     function getDateString() {
         const date = new Date()
         return date.toISOString().split("T")[0];
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log({ name, dueDate, members })
+        const { error } = await supabase
+        .from('projects')
+        .insert({ user_id: user.id, project_name: name, due_date: dueDate});
+        console.log(error);
     }
+
+    
 
     return (
         <main className="min-h-screen bg-[#0B0817] text-slate-100">
@@ -85,12 +99,12 @@ export default function AddGrpAssignment() {
                 />
             </div>
 
-            <Link
-                href = '../../'
+            <button
+                type = "submit"
                 className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#8B6FFF] to-[#6a4ee0] text-lg font-semibold font-geist-mono text-white shadow-lg shadow-[#8B6FFF]/30 transition-transform hover:scale-[1.02]"
             >
                 Create Assignment
-            </Link>
+            </button>
             </form>
         </section>
         </main>

@@ -1,12 +1,23 @@
 type GroupAssignmentProps = {
   number: number;
+  assignmentName: string;
+  dueDate: string
 };
 
-export default function GroupAssignment({ number }: GroupAssignmentProps) {
+export default function GroupAssignment({ number, assignmentName, dueDate }: GroupAssignmentProps) {
   // mock progress for now — swap for real data later
   const total = 5;
   const done = Math.min(number, total);
   const pct = Math.round((done / total) * 100);
+
+  const today = new Date();
+  const due = new Date(dueDate);
+  due.setHours(23, 59, 0, 0); // 5:00 PM
+  const diffMs = due.getTime() - today.getTime();
+  console.log(today, due)
+
+  const diffDays = Math.floor(diffMs/ (1000 * 60 * 60 * 24));
+
 
   return (
     <div className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-4 rounded-2xl border border-[#2C2650] bg-[#161229] p-4 transition-colors hover:border-[#8B6FFF]/50">
@@ -17,10 +28,10 @@ export default function GroupAssignment({ number }: GroupAssignmentProps) {
 
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-lg font-semibold text-slate-100">
-          Assignment {number}
+          {assignmentName}
         </h3>
         <span className="mt-1 inline-block rounded-md bg-[#8B6FFF]/15 px-2 py-0.5 font-mono text-xs text-[#8B6FFF]">
-          Due in 3 days
+        Due in {diffDays} days
         </span>
       </div>
 

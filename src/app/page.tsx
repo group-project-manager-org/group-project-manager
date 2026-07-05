@@ -1,12 +1,42 @@
+'use client';
 import GroupAssignment from "../components/GroupAssignment";
 import UserNav from "../components/UseNav";
 import Link from "next/link"
-const arr = [1, 2, 3, 4, 5];
-const groupAssElements = arr.map((ass) => {
-  return <GroupAssignment key={ass} number={ass} />;
-});
+import { useSupabase } from '../lib/supabaseClient'
+import { useUser  } from "@clerk/nextjs";
+import {useEffect, useState} from 'react'
+
+const arr = [1, 2, 3, 4, 5]
 
 export default function Home() {
+const [projectsData, setProjectsData] = useState<any[]>([]);
+
+  const supabase = useSupabase()
+  const { user } = useUser();
+
+    useEffect(() => {
+      const fetchProjects = async () => {
+        const {data, error} =  await supabase.from('projects').select()
+
+        if(error) {
+        console.error(error);
+        }
+        setProjectsData(data || []);
+      }
+      fetchProjects()
+    }, [])
+
+  useEffect(() => {
+  if (!user) {
+    console.log("User not logged in");
+    // optional: router.push("/sign-in")
+  }
+  }, [user]);
+
+  const groupAssElements = projectsData.map((ass) => {
+    return <GroupAssignment key={ass["id"]} number={ass["id"]} assignmentName = {ass["project_name"]} dueDate = {ass["due_date"]} />;
+  });
+
   return (
     <main className="min-h-screen bg-[#0B0817] text-slate-100">
       <nav className="flex items-center justify-between border-b border-[#2C2650] px-6 py-4">
