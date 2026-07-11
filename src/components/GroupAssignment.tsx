@@ -1,5 +1,6 @@
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FaPencil } from "react-icons/fa6";
+import { useRouter } from 'next/navigation';
 import Link from 'next/link'
 
 type GroupAssignmentProps = {
@@ -16,9 +17,10 @@ export default function GroupAssignment({ id, assignmentName, dueDate, handleDel
   const diffMs = due.getTime() - today.getTime();
 
   const diffDays = Math.floor(diffMs/ (1000 * 60 * 60 * 24));
+  const router = useRouter();
 
   return (
-    <div className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-4 rounded-2xl border border-[#2C2650] bg-[#161229] p-4 transition-colors hover:border-[#8B6FFF]/50">
+    <div onClick = {() => {router.push(`/project/${id}`)}}className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-4 rounded-2xl border border-[#2C2650] bg-[#161229] p-4 transition-colors hover:border-[#8B6FFF]/50">
       {/* progress ring */}
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-[#2C2650]">
         <span className="font-mono text-sm text-[#F4D58D]">10%</span>

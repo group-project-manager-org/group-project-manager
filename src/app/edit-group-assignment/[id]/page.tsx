@@ -1,18 +1,18 @@
 'use client'
 
-import { useState } from 'react'
 import { useSupabase } from '../../../lib/supabaseClient'
 import { useUser  } from "@clerk/nextjs";
 import Link from 'next/link'
 import UserNav from "../../../components/UseNav";
 import { use } from "react";
 import { useRouter } from 'next/navigation'
+import {useEffect, useState} from 'react'
 
 
 export default function EditGrpAssignment({ params }: {params: Promise<{ id: string }>;
 }) {
+
     const { id } = use(params);
-    console.log(id)
     const [name, setName] = useState('')
     const [dueDate, setDueDate] = useState('')
     const [members, setMembers] = useState('')
@@ -22,6 +22,20 @@ export default function EditGrpAssignment({ params }: {params: Promise<{ id: str
 
 
     const { user } = useUser();
+
+    useEffect(() => {
+          const fetchProjects = async () => {
+            const {data, error} =  await supabase.from('projects').select().eq('id', id).single();
+    
+            if(error) {
+            console.error(error);
+            }
+            setName(data.project_name)
+            setDueDate(data.due_date)            
+          }
+          fetchProjects()
+        }, [])
+    
     if(!user) {
         alert("You must login first!!!!")
         return
