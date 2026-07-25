@@ -4,6 +4,9 @@ import { use } from "react";
 import { useSupabase } from '../../../lib/supabaseClient'
 import Link from 'next/link';
 
+import TaskCard from '../../../components/TaskCard'
+import type { Task } from '../../../components/TaskCard'
+
 export default function Tasks({ params }: { params: Promise<{ id: string }> }) {
   const [name, setName] = useState('')
   const supabase = useSupabase()
@@ -34,6 +37,32 @@ export default function Tasks({ params }: { params: Promise<{ id: string }> }) {
     { href: `/project/${id}/polls`, label: 'Polls'},
     { href: `/project/${id}/files`, label: 'Files'},
   ]
+
+  const task: Task = {
+  id: 3,
+  title: 'Competitor research deck',
+  status: 'review',
+  created_by: 'u2',
+  created_by_name: 'Maya Chen',
+  showComments: false,
+  showStatusMenu: false,
+  comments: [
+    {
+      id: 1,
+      user_id: 'u3',
+      user_name: 'Jordan Lee',
+      content: 'Check slide 4 stats against the latest report before Friday',
+      created_at: new Date(Date.now() - 3 * 3600000).toISOString(),
+    },
+    {
+      id: 2,
+      user_id: 'u1',
+      user_name: 'You',
+      content: 'On it — pulling the Q3 numbers now.',
+      created_at: new Date(Date.now() - 1 * 3600000).toISOString(),
+    },
+  ],
+}
 
   return (
     <main className="min-h-screen bg-[#0B0817] text-slate-100">
@@ -71,6 +100,16 @@ export default function Tasks({ params }: { params: Promise<{ id: string }> }) {
           </Link>
         ))}
       </nav>
+    <button className="ml-6 mt-4 text-base bg-[#302566] pl-4 pr-4 pt-2 pb-2 rounded-lg hover:bg-[#3a2d7a]">Add Task</button>
+    
+    <div className="grid grid-cols-3 m-5 gap-4 items-start">
+        <TaskCard key={1} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+        <TaskCard key={2} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+        <TaskCard key={3} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+        <TaskCard key={4} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+        <TaskCard key={5} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+        <TaskCard key={6} task={task} onStatusChange={()=>{}} onAddComment={()=>{}} />
+    </div>
 
     </main>
   )
