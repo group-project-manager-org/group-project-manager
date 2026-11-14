@@ -45,14 +45,19 @@ export default function GroupAssignment({ id, assignmentName, dueDate, handleDel
             {initial}
           </span>
         ))}
-        <button className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-slate-500 text-slate-400 hover:border-[#8B6FFF] hover:text-[#8B6FFF]">
+        <button
+          type="button"
+          aria-label="Add member"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-slate-500 text-slate-400 hover:border-[#8B6FFF] hover:text-[#8B6FFF]">
           +
         </button>
       </div>
-      <Link href = {`/edit-group-assignment/${id}`} className="shrink-0 text-slate-500 hover:text-[#6a4ee0]">
+      {/* stopPropagation: the whole card navigates to the project on click */}
+      <Link href = {`/edit-group-assignment/${id}`} aria-label="Edit project" onClick={(e) => e.stopPropagation()} className="shrink-0 text-slate-500 hover:text-[#6a4ee0]">
         <FaPencil size="1.5rem"/>
-      </Link> 
-      <button onClick = {() => {handleDelete(id)}} className="shrink-0 text-slate-500 hover:text-[#FF8A65]">
+      </Link>
+      <button type="button" aria-label="Delete project" onClick = {(e) => { e.stopPropagation(); handleDelete(id) }} className="shrink-0 text-slate-500 hover:text-[#FF8A65]">
         <RiDeleteBinLine size="1.5rem"/>
       </button>
     </div>

@@ -1,6 +1,8 @@
 'use client'
 
-// Placeholder until F7 (Files tab). The empty file broke `npm run build`.
+import { EmptyState } from '@/components/ui'
+
+// Placeholder until F7 (Files tab).
 export default function FilesPage() {
-    return <>Files: coming soon</>
+    return <EmptyState title="Files are coming soon" description="Upload and download files shared with your group." />
 }

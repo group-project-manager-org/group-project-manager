@@ -34,6 +34,12 @@
   - Tailwind tokens added as `nyx-*` colours (`bg-nyx-card`, `text-nyx-violet`, …) and `font-geist-mono` now actually works (it was used across the app but never defined).
   - Removed the `alert()` calls on the add/edit pages (bug 3); they show a loading state while Clerk loads.
   - Uses `@/lib/types` and `@/lib/utils/dates` from B0 directly.
+- [2026-11-14] **F1 done.** Mocks still used for: `getProject` (behind `NEXT_PUBLIC_USE_MOCKS=1`; mock project id `404` returns null to show "not found").
+  - `src/app/project/[id]/layout.tsx` loads the project once via `useProject()` and renders header (back link, name, `DueBadge`, `AvatarStack`, Members button) + tab nav for every tab. AI Summary tab only shows when `NEXT_PUBLIC_FEATURE_AI_SUMMARY=1`.
+  - Child pages read `{ project, members, myRole, reload }` with `useProjectContext()` from `src/components/project/ProjectContext.tsx`.
+  - Removed the copied header/nav/fetch from the Tasks page (bugs 4, 5); Polls now gets the header too. Notes/Files are placeholders.
+  - `GroupAssignment` delete / "+" / edit stop click propagation (bug 2).
+  - Members button opens a read-only member list; add/remove/leave come in F3.
 
 ## Contract change requests
 
@@ -43,6 +49,7 @@ Both fixed in F0; `npm run build` passes.
 - `src/app/project/[id]/files/page.tsx`: now a placeholder page until F7.
 
 ## Notes for backend
+- `useSupabase()` creates a new Supabase client on **every render**. Any `useEffect` that lists the client as a dependency will refetch in a loop, and it also spawns many GoTrue/Realtime clients. Suggest wrapping `createClient(...)` in `useMemo(..., [getToken])` (or a module-level singleton whose `accessToken` reads the latest `getToken`). The frontend works around it for now by never using `sb` as a dependency.
 - `npm run build` logs `Failed to set initial Realtime auth token ... clerk_runtime_not_browser` from `src/lib/supabaseClient.tsx` during prerender. Harmless, but the client probably shouldn't call `getToken()` on the server (e.g. skip `accessToken` when `typeof window === 'undefined'`).
 
 ## Manual steps for the user

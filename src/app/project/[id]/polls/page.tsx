@@ -131,7 +131,7 @@ const fetchPolls = async () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 bg-[#0B0817] min-h-screen">
+    <div className="flex flex-col gap-4">
 
       {polls.length === 0 && !showForm && (
         <div className="rounded-2xl border border-dashed border-[#2C2650] px-6 py-12 text-center">
