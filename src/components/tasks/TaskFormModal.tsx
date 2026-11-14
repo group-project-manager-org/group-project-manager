@@ -33,11 +33,16 @@ function initialValues(task?: Task | null): Values {
   };
 }
 
+const BAD_DATE = "That date doesn't exist. Check the day and month.";
+
 export default function TaskFormModal({ open, onClose, task, members, onSaved }: TaskFormModalProps) {
   const api = useTaskApi();
   const actor = useActor();
   const [values, setValues] = useState<Values>(() => initialValues(task));
   const [titleError, setTitleError] = useState<string | null>(null);
+  // The browser reports an impossible date (e.g. 31/02) as an empty value plus validity.badInput.
+  const [dueBadInput, setDueBadInput] = useState(false);
+  const [dueError, setDueError] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const editing = !!task;
@@ -47,6 +52,8 @@ export default function TaskFormModal({ open, onClose, task, members, onSaved }:
     if (open) {
       setValues(initialValues(task));
       setTitleError(null);
+      setDueBadInput(false);
+      setDueError(null);
       setError(null);
       setSaving(false);
     }
@@ -61,6 +68,7 @@ export default function TaskFormModal({ open, onClose, task, members, onSaved }:
     const title = values.title.trim();
     if (!title) return setTitleError('Give the task a title.');
     if (title.length > 200) return setTitleError('Keep the title under 200 characters.');
+    if (dueBadInput) return setDueError(BAD_DATE); // otherwise it would silently save as "no due date"
     if (!actor) return;
 
     const fields = {
@@ -163,9 +171,16 @@ export default function TaskFormModal({ open, onClose, task, members, onSaved }:
               id="task-due"
               type="date"
               value={values.due_date}
-              onChange={(e) => set('due_date', e.target.value)}
-              className={FIELD_CLASS}
+              onChange={(e) => {
+                set('due_date', e.target.value);
+                setDueBadInput(e.target.validity.badInput);
+                setDueError(null);
+              }}
+              onBlur={(e) => e.target.validity.badInput && setDueError(BAD_DATE)}
+              aria-invalid={!!dueError}
+              className={cx(FIELD_CLASS, dueError && 'border-nyx-coral')}
             />
+            {dueError && <p className="text-xs text-nyx-coral">{dueError}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">

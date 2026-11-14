@@ -25,6 +25,8 @@ type FieldErrors = Partial<Record<keyof ProjectFormValues, string>>;
 const INPUT =
   'rounded-lg border bg-nyx-bg px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-nyx-violet';
 
+const BAD_DATE = "That date doesn't exist. Check the day and month (e.g. there's no 31 February).";
+
 /** Name / description / due date form used by the create and edit pages. */
 export default function ProjectForm({ initial, submitLabel, onSubmit }: ProjectFormProps) {
   const [values, setValues] = useState<ProjectFormValues>({
@@ -35,6 +37,8 @@ export default function ProjectForm({ initial, submitLabel, onSubmit }: ProjectF
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
+  // The browser reports an impossible date (e.g. 31/02) as an empty value plus validity.badInput.
+  const [dueBadInput, setDueBadInput] = useState(false);
 
   // When editing, an existing past due date may be kept as-is; a new date must be today or later.
   const originalDue = initial?.due_date ?? '';
@@ -50,7 +54,8 @@ export default function ProjectForm({ initial, submitLabel, onSubmit }: ProjectF
     if (!name) e.project_name = 'Give the assignment a name.';
     else if (name.length > NAME_MAX) e.project_name = `Keep the name under ${NAME_MAX} characters.`;
     if (values.description.trim().length > DESC_MAX) e.description = `Keep the description under ${DESC_MAX} characters.`;
-    if (!values.due_date) e.due_date = 'Pick a due date.';
+    if (dueBadInput) e.due_date = BAD_DATE;
+    else if (!values.due_date) e.due_date = 'Pick a due date.';
     else if (values.due_date < todayYmd() && values.due_date !== originalDue) e.due_date = "The due date can't be in the past.";
     return e;
   }
@@ -115,7 +120,11 @@ export default function ProjectForm({ initial, submitLabel, onSubmit }: ProjectF
           type="date"
           min={originalDue && originalDue < todayYmd() ? originalDue : todayYmd()}
           value={values.due_date}
-          onChange={(e) => set('due_date', e.target.value)}
+          onChange={(e) => {
+            set('due_date', e.target.value);
+            setDueBadInput(e.target.validity.badInput);
+          }}
+          onBlur={(e) => e.target.validity.badInput && setErrors((er) => ({ ...er, due_date: BAD_DATE }))}
           aria-invalid={!!errors.due_date}
           aria-describedby={errors.due_date ? 'project-due-error' : undefined}
           className={cx(INPUT, '[color-scheme:dark]', errors.due_date ? 'border-nyx-coral' : 'border-nyx-border')}
