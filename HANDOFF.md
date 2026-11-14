@@ -73,7 +73,28 @@
   - `src/proxy.ts`: `/api(.*)` no longer goes through `auth.protect()`. Each route checks `auth()` itself and returns a JSON 401, and the cron route (B8) will use its own secret instead of a session.
   - The routes aren't tested end to end, because that needs real Clerk keys. `members.ts` and the RLS the routes rely on were tested against local PostgREST.
   - **Privacy:** any signed-in user can search by email prefix, so they can find whether an address has an account and see its name and avatar. That's what the spec asks for; tighten it later if needed, for example by allowing only owners to search.
-- Next: B3 (tasks, subtasks, comments, and the `project_progress` view).
+- [2026-11-14] **B3 done.** The user must run `supabase/migrations/0002_tasks.sql`, then `verify.sql`.
+  - **Tables:** `tasks` and `subtasks` are new. `comments` already existed and is altered:
+    - It gets a FK to tasks with cascade. Existing comments are deleted first, since no tasks existed, so they pointed at nothing.
+    - `user_id` defaults to the caller.
+    - `user_name` becomes `not null`; existing rows are backfilled with 'Member'.
+    - `content` gets a 1-2000 character check.
+  - **Who can do what:**
+    - Any member reads, creates and updates tasks.
+    - Updates can only touch title, description, status, priority, due_date, assignee_id and position. `created_by` and `project_id` are fixed (column grants).
+    - Delete is limited to the task's creator or the project owner.
+    - Subtasks are a shared checklist: any member can add, toggle or delete them.
+    - Comments can't be edited. Only the author can delete one.
+  - **Assignee:** a trigger rejects a non-member assignee with `'assignee must be a project member'`, as `DbError` code `23514`. When a member leaves or is removed, their tasks in that project are unassigned.
+  - **`project_progress` view** (`security_invoker`). PostgREST can't embed views, so `listMyProjects` / `getProject` read it with a second query. Progress is now real.
+  - **`tasks.ts`:**
+    - `listTasks` is one query: `*, subtasks(*), comments(count)`. Subtasks are sorted by position.
+    - `createTask` / `updateTask` return the full `Task`.
+    - `addSubtask` appends at the next position.
+    - Calls blocked by RLS throw `NOT_FOUND`.
+  - **`comments.ts`:** comments come back oldest first. Text is trimmed, and an empty comment is rejected by the DB check.
+  - Tested on local PostgREST: CRUD for the owner, a member and a stranger, the assignee checks, unassign on leave, the comment count, and progress (1 of 2 done gives 50).
+- Next: B5 (polls refactor).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -118,5 +139,6 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0000_baseline.sql`. It is safe on the existing database and does nothing there.
 - ~~Before 0001: export policies and columns (README step 3).~~ Done 2026-11-14.
 - Run `supabase/migrations/0001_core.sql` in the SQL editor, then run `supabase/verify.sql`. Every row should say PASS.
+- Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
 - `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.

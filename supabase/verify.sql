@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0001 (B2). Later migrations add their own checks here.
+-- Covers migrations up to 0002 (B3). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -8,7 +8,7 @@ truncate _verify;
 -- Tables exist and have RLS on
 insert into _verify (check_name, ok)
 select 'rls on: ' || t, coalesce((select c.relrowsecurity from pg_class c where c.oid = to_regclass('public.' || t)), false)
-from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments']) t;
+from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks']) t;
 
 -- Functions exist
 insert into _verify (check_name, ok)
@@ -30,7 +30,10 @@ from (values
   ('project_members', 'project_members_update'), ('project_members', 'project_members_delete'),
   ('polls', 'polls_select'), ('polls', 'polls_insert'), ('polls', 'polls_delete'),
   ('poll_options', 'poll_options_select'), ('poll_options', 'poll_options_insert'),
-  ('votes', 'votes_select'), ('votes', 'votes_insert'), ('votes', 'votes_update'), ('votes', 'votes_delete')
+  ('votes', 'votes_select'), ('votes', 'votes_insert'), ('votes', 'votes_update'), ('votes', 'votes_delete'),
+  ('tasks', 'tasks_select'), ('tasks', 'tasks_insert'), ('tasks', 'tasks_update'), ('tasks', 'tasks_delete'),
+  ('subtasks', 'subtasks_all'),
+  ('comments', 'comments_select'), ('comments', 'comments_insert'), ('comments', 'comments_delete')
 ) as e (tbl, pol);
 
 -- The old "own rows only" policies are gone
@@ -46,6 +49,9 @@ values
   ('constraint: polls_project_id_fkey', exists (select 1 from pg_constraint where conname = 'polls_project_id_fkey')),
   ('constraint: votes_one_per_user',    exists (select 1 from pg_constraint where conname = 'votes_one_per_user')),
   ('trigger: projects_add_owner',       exists (select 1 from pg_trigger where tgname = 'projects_add_owner')),
+  ('trigger: tasks_check_assignee',     exists (select 1 from pg_trigger where tgname = 'tasks_check_assignee')),
+  ('constraint: comments_task_id_fkey', exists (select 1 from pg_constraint where conname = 'comments_task_id_fkey')),
+  ('view: project_progress',            to_regclass('public.project_progress') is not null),
   ('every project has an owner row',
      not exists (select 1 from public.projects p
                  where not exists (select 1 from public.project_members m
@@ -103,7 +109,8 @@ begin
     execute 'set local role authenticated';
     select (select count(*) from public.projects) + (select count(*) from public.project_members)
          + (select count(*) from public.polls) + (select count(*) from public.poll_options)
-         + (select count(*) from public.votes)
+         + (select count(*) from public.votes) + (select count(*) from public.tasks)
+         + (select count(*) from public.comments)
       into stranger_rows;
     begin
       insert into public.polls (project_id, question) values (v_pid, 'hijack');

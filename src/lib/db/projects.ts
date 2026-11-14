@@ -14,14 +14,30 @@ async function currentUserId(sb: SupabaseClient): Promise<string> {
   return data as string;
 }
 
-function toSummary(row: ProjectRow, userId: string): ProjectSummary {
+type Progress = { project_id: ID; task_total: number; task_done: number; progress: number };
+
+/** project_progress is a view, which PostgREST can't embed, so it's a second query. */
+async function progressFor(sb: SupabaseClient, ids: ID[]): Promise<Map<ID, Progress>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await sb.from('project_progress').select('*').in('project_id', ids);
+  if (error) throw toDbError(error);
+  return new Map((data as Progress[]).map((p) => [p.project_id, p]));
+}
+
+function toSummary(row: ProjectRow, userId: string, progress?: Progress): ProjectSummary {
   const { members, ...project } = row;
   const sorted = [...members].sort(
     (a, b) => (a.role === b.role ? a.joined_at.localeCompare(b.joined_at) : a.role === 'owner' ? -1 : 1),
   );
   const myRole: MemberRole = members.find((m) => m.user_id === userId)?.role ?? 'member';
-  // shortcut: no tasks table until B3, so progress is always 0; switch to the project_progress view in B3.
-  return { ...project, members: sorted, task_total: 0, task_done: 0, progress: 0, my_role: myRole };
+  return {
+    ...project,
+    members: sorted,
+    task_total: progress?.task_total ?? 0,
+    task_done: progress?.task_done ?? 0,
+    progress: progress?.progress ?? 0,
+    my_role: myRole,
+  };
 }
 
 /** Projects the current user is a member of, sorted by due_date ascending. */
@@ -34,7 +50,9 @@ export async function listMyProjects(sb: SupabaseClient): Promise<ProjectSummary
     .eq('mine.user_id', me)
     .order('due_date', { ascending: true });
   if (error) throw toDbError(error);
-  return (data as (ProjectRow & { mine: unknown })[]).map(({ mine: _mine, ...row }) => toSummary(row, me));
+  const rows = (data as (ProjectRow & { mine: unknown })[]).map(({ mine: _mine, ...row }) => row);
+  const progress = await progressFor(sb, rows.map((r) => r.id));
+  return rows.map((row) => toSummary(row, me, progress.get(row.id)));
 }
 
 /** null when the project doesn't exist or the caller isn't a member. */
@@ -42,7 +60,9 @@ export async function getProject(sb: SupabaseClient, id: ID): Promise<ProjectSum
   const me = await currentUserId(sb);
   const { data, error } = await sb.from('projects').select(SUMMARY_SELECT).eq('id', id).maybeSingle();
   if (error) throw toDbError(error);
-  return data ? toSummary(data as ProjectRow, me) : null;
+  if (!data) return null;
+  const progress = await progressFor(sb, [id]);
+  return toSummary(data as ProjectRow, me, progress.get(id));
 }
 
 export async function createProject(
