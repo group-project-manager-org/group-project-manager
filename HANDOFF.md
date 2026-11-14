@@ -140,7 +140,23 @@
   - **`GET /api/cron/reminders`:** requires `Authorization: Bearer ${CRON_SECRET}`, uses `SUPABASE_SECRET_KEY`, and returns `{ created }`. `vercel.json` schedules it at `0 22 * * *` UTC, which is 08:00 AEST (09:00 during daylight saving). Vercel Cron sends the bearer header automatically when `CRON_SECRET` is set in the Vercel env.
   - **`notifications.ts`:** `listNotifications` returns the latest 50, newest first. `markRead` and `markAllRead` only touch unread rows.
   - Tested on local PostgREST: both triggers, the self-assign case producing no notification, clients blocked from inserting and from calling reminders, service_role reminders with dedupe, overdue and project-due cases, and mark read / all read staying scoped to the user.
-- Next: B9 (AI member summaries).
+- [2026-11-14] **B9 done.** The user must run `supabase/migrations/0006_member_summaries.sql` and set `ANTHROPIC_API_KEY` (and optionally `AI_MODEL`; the default is `claude-opus-5-5`).
+  - **`POST /api/projects/[id]/summary`** returns:
+    - 401 when not signed in,
+    - 404 when the caller isn't a member,
+    - 503 when `ANTHROPIC_API_KEY` isn't set or the API is rate limited,
+    - 502 when the AI request fails or the model refuses,
+    - 200 `{ members: MemberSummary[], generated_at }` on success.
+  - **Inputs:** gathered as the caller, so RLS applies. They cover each member's assigned and created tasks (with status), plus their comments, notes and poll votes from the last 14 days. Comments and notes are capped at 10 per member and 200 characters each.
+  - **Privacy:** only display names reach the model, with members keyed `m1..mN`. No emails or Clerk ids are sent.
+  - **Model call:** `@anthropic-ai/sdk` with `client.beta.messages.parse` and a Zod schema, at effort `low`. Server-side refusal fallback (`fallbacks: "default"`) is on for models that support it.
+  - **Prompt:** asks for 2-3 neutral, factual sentences per member and no judgments about effort. User-written content is treated as data.
+  - **Counts:** `tasks_done` / `tasks_open` count the tasks assigned to that member, calculated in code rather than by the model.
+  - **Cache:** the result is stored in `member_summaries` for 1 hour, so a second call within the hour skips the AI. Writing the cache needs `SUPABASE_SECRET_KEY`; without it summaries still work, just uncached. Clients can only read their project's cached row.
+  - **New dependencies** (`package.json` is shared): `@anthropic-ai/sdk` and `zod`.
+  - **Tested locally:** data gathering against PostgREST, including that another project's data doesn't leak in and that a stranger gets nothing. I also confirmed no Clerk ids appear in the model input. The SDK request and the parsing were checked against a local mock of the Messages API: the body carries `fallbacks`, the `json_schema` format and `effort`. **Not tested against the real Claude API**, because there's no key here.
+  - `.env.example`: `AI_MODEL` now defaults to `claude-opus-5-5`.
+- Next: B10 (realtime).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -195,6 +211,7 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
+- Run `supabase/migrations/0006_member_summaries.sql`, then `supabase/verify.sql`. Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
 - Fix owners shown as "Owner": add `SUPABASE_SECRET_KEY` to `.env.local`, then run `node --env-file=.env.local scripts/backfill-member-names.mjs`. It copies real names and avatars from Clerk into the `project_members` rows that 0001 backfilled as 'Owner'. Projects created through the current form already store the real name.
 - For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.

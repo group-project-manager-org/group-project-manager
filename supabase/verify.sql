@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0005 (B8). Later migrations add their own checks here.
+-- Covers migrations up to 0006 (B9). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -8,7 +8,7 @@ truncate _verify;
 -- Tables exist and have RLS on
 insert into _verify (check_name, ok)
 select 'rls on: ' || t, coalesce((select c.relrowsecurity from pg_class c where c.oid = to_regclass('public.' || t)), false)
-from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files', 'notifications']) t;
+from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files', 'notifications', 'member_summaries']) t;
 
 -- Functions exist
 insert into _verify (check_name, ok)
@@ -36,7 +36,8 @@ from (values
   ('comments', 'comments_select'), ('comments', 'comments_insert'), ('comments', 'comments_delete'),
   ('notes', 'notes_select'), ('notes', 'notes_insert'), ('notes', 'notes_update'), ('notes', 'notes_delete'),
   ('files', 'files_select'), ('files', 'files_insert'), ('files', 'files_delete'),
-  ('notifications', 'notifications_select'), ('notifications', 'notifications_update')
+  ('notifications', 'notifications_select'), ('notifications', 'notifications_update'),
+  ('member_summaries', 'member_summaries_select')
 ) as e (tbl, pol);
 
 -- The old "own rows only" policies are gone
