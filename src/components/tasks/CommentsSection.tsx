@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { RiDeleteBinLine } from 'react-icons/ri';
 import { Avatar, ErrorBanner, Spinner, timeAgo } from '@/components/ui';
 import { useActor } from '@/hooks/useActor';
+import { useRealtime } from '@/hooks/useRealtime';
 import { useTaskApi } from '@/hooks/useTaskApi';
 import type { Comment, Member, Task } from '@/lib/types';
 
@@ -24,6 +25,10 @@ export default function CommentsSection({ task, membersById, onCountChange }: Co
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Bumped by live updates to re-fetch while the section is open.
+  const [version, setVersion] = useState(0);
+  useRealtime(['comments'], () => setVersion((v) => v + 1));
+
   useEffect(() => {
     let stale = false;
     api
@@ -33,9 +38,9 @@ export default function CommentsSection({ task, membersById, onCountChange }: Co
     return () => {
       stale = true;
     };
-    // Load once per task; api identity changes shouldn't refetch.
+    // Load per task (and per live update); api identity changes shouldn't refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id]);
+  }, [task.id, version]);
 
   async function submit() {
     const content = draft.trim();
@@ -101,7 +106,7 @@ export default function CommentsSection({ task, membersById, onCountChange }: Co
                         type="button"
                         onClick={() => void remove(c)}
                         aria-label="Delete comment"
-                        className="ml-auto rounded p-0.5 text-nyx-muted opacity-0 transition-opacity hover:text-nyx-coral focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet group-hover:opacity-100"
+                        className="ml-auto rounded p-0.5 text-nyx-muted can-hover:opacity-0 transition-opacity hover:text-nyx-coral can-hover:focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet can-hover:group-hover:opacity-100"
                       >
                         <RiDeleteBinLine size={12} aria-hidden />
                       </button>

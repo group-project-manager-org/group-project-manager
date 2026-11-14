@@ -172,7 +172,7 @@ export default function NoteCard({ note, isMine, canDelete, onTogglePin, onSave,
             type="button"
             onClick={() => onDelete(note)}
             aria-label="Delete note"
-            className="ml-auto rounded p-1 opacity-0 transition-opacity hover:text-nyx-coral focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet group-hover:opacity-100"
+            className="ml-auto rounded p-1 can-hover:opacity-0 transition-opacity hover:text-nyx-coral can-hover:focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet can-hover:group-hover:opacity-100"
           >
             <RiDeleteBinLine aria-hidden />
           </button>

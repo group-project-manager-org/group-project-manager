@@ -7,6 +7,7 @@ import { useProjectContext } from '@/components/project/ProjectContext'
 import { AddButton, ConfirmDialog, EmptyState, ErrorBanner, LoadingBlock } from '@/components/ui'
 import { useActor } from '@/hooks/useActor'
 import { useAsync } from '@/hooks/useAsync'
+import { useRealtime } from '@/hooks/useRealtime'
 import { usePollApi } from '@/hooks/usePollApi'
 import type { ID, Poll } from '@/lib/types'
 
@@ -34,6 +35,7 @@ export default function PollsPage() {
         [project.id, actor?.user_id],
         actor !== null,
     )
+    useRealtime(['votes'], reload)
 
     const [createOpen, setCreateOpen] = useState(false)
     const [deleting, setDeleting] = useState<Poll | null>(null)

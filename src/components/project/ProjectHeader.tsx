@@ -15,7 +15,7 @@ export default function ProjectHeader() {
   const [membersOpen, setMembersOpen] = useState(false);
 
   return (
-    <header className="border-b border-nyx-border px-6 py-5">
+    <header className="border-b border-nyx-border px-4 py-5 sm:px-6">
       <div className="mb-4 flex items-center justify-between gap-4">
         <Link
           href="/"

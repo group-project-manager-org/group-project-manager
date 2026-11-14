@@ -67,7 +67,7 @@ export default function Home() {
     <main className="min-h-screen bg-nyx-bg text-slate-100">
       <AppNav />
 
-      <section className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-20">
+      <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-12 sm:px-6 sm:py-20">
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           Plan projects, assign work, and ship with confidence.
         </h1>
@@ -82,7 +82,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="px-6 pb-16">{list}</div>
+      <div className="px-4 pb-16 sm:px-6">{list}</div>
     </main>
   );
 }

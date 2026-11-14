@@ -103,7 +103,7 @@ export default function SubtaskList({ task, canDelete, onChange }: SubtaskListPr
                   type="button"
                   onClick={() => void remove(s)}
                   aria-label={`Delete subtask "${s.title}"`}
-                  className="rounded p-0.5 text-nyx-muted opacity-0 transition-opacity hover:text-nyx-coral focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet group-hover:opacity-100"
+                  className="rounded p-0.5 text-nyx-muted can-hover:opacity-0 transition-opacity hover:text-nyx-coral can-hover:focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet can-hover:group-hover:opacity-100"
                 >
                   <RiCloseLine size={14} aria-hidden />
                 </button>

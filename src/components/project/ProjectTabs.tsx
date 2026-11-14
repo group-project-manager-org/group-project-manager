@@ -1,14 +1,15 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cx } from '@/components/ui';
+import { FEATURE_AI_SUMMARY } from '@/hooks/flags';
 import type { ID } from '@/lib/types';
-
-const SHOW_SUMMARY = process.env.NEXT_PUBLIC_FEATURE_AI_SUMMARY === '1';
 
 export default function ProjectTabs({ projectId }: { projectId: ID }) {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
   const base = `/project/${projectId}`;
 
   const tabs = [
@@ -16,13 +17,24 @@ export default function ProjectTabs({ projectId }: { projectId: ID }) {
     { href: `${base}/notes`, label: 'Notes' },
     { href: `${base}/polls`, label: 'Polls' },
     { href: `${base}/files`, label: 'Files' },
-    ...(SHOW_SUMMARY ? [{ href: `${base}/summary`, label: 'AI Summary' }] : []),
+    ...(FEATURE_AI_SUMMARY ? [{ href: `${base}/summary`, label: 'AI Summary' }] : []),
   ];
 
   const path = pathname.replace(/\/$/, '');
 
+  // On narrow screens the tabs scroll sideways; keep the active one in view.
+  useEffect(() => {
+    navRef.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [path]);
+
   return (
-    <nav aria-label="Project sections" className="flex gap-2 overflow-x-auto border-b border-nyx-border px-6 py-3">
+    <nav
+      ref={navRef}
+      aria-label="Project sections"
+      className="scrollbar-none flex snap-x gap-2 overflow-x-auto border-b border-nyx-border px-4 py-3 sm:px-6"
+    >
       {tabs.map((tab) => {
         const active = tab.exact ? path === tab.href : path === tab.href || path.startsWith(`${tab.href}/`);
         return (
@@ -31,7 +43,7 @@ export default function ProjectTabs({ projectId }: { projectId: ID }) {
             href={tab.href}
             aria-current={active ? 'page' : undefined}
             className={cx(
-              'whitespace-nowrap rounded-xl border px-5 py-2.5 font-geist-mono text-sm transition-colors',
+              'shrink-0 snap-start whitespace-nowrap rounded-xl border px-4 py-2 font-geist-mono text-sm transition-colors sm:px-5 sm:py-2.5',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet',
               active
                 ? 'border-nyx-violet bg-nyx-violet/15 text-nyx-violet'

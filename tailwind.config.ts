@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Devices with a real hover (mouse/trackpad). Use for hide-until-hover
+        // controls so they stay visible on touchscreens.
+        "can-hover": { raw: "(hover: hover)" },
+      },
       fontFamily: {
         // `font-geist-mono` — labels, badges, counts, dates (spec §7)
         "geist-mono": ["var(--font-geist-mono)", "ui-monospace", "monospace"],

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui'
 import { useActor } from '@/hooks/useActor'
 import { useAsync } from '@/hooks/useAsync'
+import { useRealtime } from '@/hooks/useRealtime'
 import { useTaskApi } from '@/hooks/useTaskApi'
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types'
 
@@ -43,6 +44,7 @@ export default function TasksPage() {
     const searchParams = useSearchParams()
 
     const { data: tasks, loading, error, reload, setData } = useAsync(() => api.listTasks(), [project.id], true)
+    useRealtime(['tasks', 'comments'], reload)
 
     const [filter, setFilter] = useState<Filter>('all')
     const [sort, setSort] = useState<Sort>('due')

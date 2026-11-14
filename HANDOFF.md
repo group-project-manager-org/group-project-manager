@@ -187,6 +187,14 @@
   - **F7 Files** (needs B7): drag-and-drop zone + Browse (multiple files, uploaded one at a time with a spinner row each). Files over `MAX_FILE_BYTES` are rejected before upload with an inline message. List with file-type icon, name, size, uploader, time, Download (`getDownloadUrl`, opened in a new tab) and Delete (uploader or owner).
   - **F8 Notifications** (needs B8): bell in `UserNav` (`src/components/NotificationBell.tsx`) with unread count. Dropdown lists the latest 20; clicking one marks it read and goes to `/project/[id]?task=ID`. "Mark all read". Polls every 60 s while the tab is visible (`src/hooks/useNotifications.ts`). Without B8 the dropdown shows the error inline; nothing else breaks.
   - Shared helpers added to `@/components/ui`: `timeAgo`, `formatBytes`, `FIELD_CLASS`.
+- [2026-11-14] **F9 + F10 done (Phase 3 frontend).**
+  - **F9 AI Summary** (needs B9): `/project/[id]/summary`, tab shown only when `NEXT_PUBLIC_FEATURE_AI_SUMMARY=1` (flag in `src/hooks/flags.ts`; the page itself also checks it). "Generate summary" button calls `getMemberSummaries(projectId)`; skeleton cards while it runs; then one card per member (avatar, name, done/open counts, summary) and "Generated 12 min ago" (ticks every minute). Button becomes "Refresh" (the route's 1-hour cache decides whether it regenerates). `ApiError` text is shown inline. Mock behind `NEXT_PUBLIC_USE_MOCKS=1` (`src/hooks/mockSummary.ts`, mimics the 1-hour cache).
+  - **F10 Realtime** (needs B10): the project layout opens one `subscribeToProject` channel per project and exposes `subscribe(tables, cb)` on `ProjectContext`; pages use `useRealtime(tables, reload)` (`src/hooks/useRealtime.ts`). Events are coalesced per table for 300 ms. Tasks page listens to `tasks` + `comments`, an open comment thread re-fetches on `comments`, Notes on `notes`, Polls on `votes`, Files on `files`. Skipped in mock mode, and **silently skipped while `subscribeToProject` throws `NOT_IMPLEMENTED`**, so nothing breaks before B10. Backend: call `onChange(table)` with the table name; the frontend doesn't need the payload.
+  - **F10 Accessibility / responsive:**
+    - Menus, status dropdown and the notification bell close on Esc and outside click; modals trap focus and restore it; icon-only buttons have `aria-label`s.
+    - `globals.css`: dark background everywhere (was white outside the page wrapper in light mode), a global `:focus-visible` outline for anything without its own ring, and `prefers-reduced-motion` support.
+    - New Tailwind variant `can-hover` (`(hover: hover)`): hide-until-hover delete buttons (subtasks, comments, notes) now stay visible on touchscreens.
+    - 375 px: tabs scroll sideways without a scrollbar and keep the active tab in view; modals are full-screen sheets; tighter side padding on phones; AppNav subtitle hidden on phones.
 
 ## Contract change requests
 

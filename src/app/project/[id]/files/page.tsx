@@ -18,6 +18,7 @@ import {
 } from '@/components/ui'
 import { useActor } from '@/hooks/useActor'
 import { useAsync } from '@/hooks/useAsync'
+import { useRealtime } from '@/hooks/useRealtime'
 import { useFileApi } from '@/hooks/useFileApi'
 import { MAX_FILE_BYTES } from '@/lib/db/files'
 import type { ProjectFile } from '@/lib/types'
@@ -37,6 +38,7 @@ export default function FilesPage() {
     const api = useFileApi()
 
     const { data: files, loading, error, reload, setData } = useAsync(() => api.listFiles(), [project.id], true)
+    useRealtime(['files'], reload)
 
     const [uploads, setUploads] = useState<Upload[]>([])
     const [uploadErrors, setUploadErrors] = useState<string[]>([])

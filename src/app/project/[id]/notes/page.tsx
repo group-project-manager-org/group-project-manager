@@ -6,6 +6,7 @@ import { useProjectContext } from '@/components/project/ProjectContext'
 import { AddButton, ConfirmDialog, EmptyState, ErrorBanner, LoadingBlock } from '@/components/ui'
 import { useActor } from '@/hooks/useActor'
 import { useAsync } from '@/hooks/useAsync'
+import { useRealtime } from '@/hooks/useRealtime'
 import { useNoteApi } from '@/hooks/useNoteApi'
 import type { Note } from '@/lib/types'
 
@@ -18,6 +19,7 @@ export default function NotesPage() {
     const api = useNoteApi()
 
     const { data, loading, error, reload, setData } = useAsync(() => api.listNotes(), [project.id], true)
+    useRealtime(['notes'], reload)
     const notes = data ? [...data].sort(byPinnedThenNewest) : null
 
     const [creating, setCreating] = useState(false)
