@@ -156,7 +156,16 @@
   - **New dependencies** (`package.json` is shared): `@anthropic-ai/sdk` and `zod`.
   - **Tested locally:** data gathering against PostgREST, including that another project's data doesn't leak in and that a stranger gets nothing. I also confirmed no Clerk ids appear in the model input. The SDK request and the parsing were checked against a local mock of the Messages API: the body carries `fallbacks`, the `json_schema` format and `effort`. **Not tested against the real Claude API**, because there's no key here.
   - `.env.example`: `AI_MODEL` now defaults to `claude-opus-5-5`.
-- Next: B10 (realtime).
+- [2026-11-14] **B10 done.** The user must run `supabase/migrations/0007_realtime.sql`, then `verify.sql`.
+  - **Publication:** `tasks`, `subtasks`, `comments`, `notes`, `polls`, `votes` and `files` are in `supabase_realtime`. `subtasks` and `polls` go beyond the spec: subtask changes report as `'tasks'` and new polls as `'votes'`, so the existing `RealtimeTable` type is unchanged.
+  - **`subscribeToProject(sb, projectId, onChange)`** opens one channel per project and returns an unsubscribe function.
+    - INSERT and UPDATE events on tables with a `project_id` are filtered to this project.
+    - DELETE events can't be filtered by Realtime, and `subtasks`, `comments` and `votes` have no `project_id`, so those subscriptions are unfiltered.
+    - RLS still limits INSERT/UPDATE events to the caller's own projects. Expect an occasional extra reload when something changes in another project of yours.
+    - DELETE events carry only the row id, so a stranger can learn that "a row was deleted" but nothing else.
+  - **No new client setup:** `useSupabase()` already passes the Clerk token to Realtime through `accessToken`.
+  - **Tested** against a local Supabase Realtime server: one member saw the other member's task insert, update, subtask, note, comment and delete events. A stranger saw no insert or update events.
+- **Backend B0-B10 are all done.**
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -219,7 +228,8 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
-- Run `supabase/migrations/0006_member_summaries.sql`, then `supabase/verify.sql`. Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
+- Run `supabase/migrations/0006_member_summaries.sql`, then `supabase/verify.sql`.
+- Run `supabase/migrations/0007_realtime.sql`, then `supabase/verify.sql` (every row should be PASS). Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
 - Fix owners shown as "Owner": add `SUPABASE_SECRET_KEY` to `.env.local`, then run `node --env-file=.env.local scripts/backfill-member-names.mjs`. It copies real names and avatars from Clerk into the `project_members` rows that 0001 backfilled as 'Owner'. Projects created through the current form already store the real name.
 - For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.

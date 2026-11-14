@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0006 (B9). Later migrations add their own checks here.
+-- Covers migrations up to 0007 (B10). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -65,6 +65,9 @@ values
   ('reminders not callable by clients',
      not has_function_privilege('authenticated', 'public.create_due_reminders(date)', 'execute')
      and not has_function_privilege('anon', 'public.create_due_reminders(date)', 'execute')),
+  ('realtime publication has project tables',
+     (select count(*) = 7 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public'
+        and tablename in ('tasks', 'subtasks', 'comments', 'notes', 'polls', 'votes', 'files'))),
   ('view: project_progress',            to_regclass('public.project_progress') is not null),
   ('every project has an owner row',
      not exists (select 1 from public.projects p
