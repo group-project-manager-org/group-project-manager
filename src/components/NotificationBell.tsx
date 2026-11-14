@@ -11,6 +11,8 @@ import {
   RiMailLine,
   RiNotification3Line,
   RiUserAddLine,
+  RiUserFollowLine,
+  RiUserUnfollowLine,
 } from 'react-icons/ri';
 import { ErrorBanner, Spinner, cx, timeAgo } from '@/components/ui';
 import { useDismiss } from '@/hooks/useDismiss';
@@ -25,6 +27,8 @@ const TYPE_META: Record<NotificationType, { icon: IconType; color: string }> = {
   task_assigned: { icon: RiUserAddLine, color: 'text-nyx-violet' },
   comment_added: { icon: RiChat3Line, color: 'text-nyx-mint' },
   project_invite: { icon: RiMailLine, color: 'text-nyx-violet' },
+  invite_accepted: { icon: RiUserFollowLine, color: 'text-nyx-mint' },
+  invite_declined: { icon: RiUserUnfollowLine, color: 'text-nyx-coral' },
 };
 
 const SHOW_MAX = 20;

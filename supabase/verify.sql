@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0008 (invitations). Later migrations add their own checks here.
+-- Covers migrations up to 0009 (invite responses). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -74,6 +74,7 @@ values
   ('members join only via invitations',
      not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'project_members' and cmd = 'INSERT')),
   ('trigger: project_invitations_notify', exists (select 1 from pg_trigger where tgname = 'project_invitations_notify')),
+  ('trigger: project_invitations_notify_response', exists (select 1 from pg_trigger where tgname = 'project_invitations_notify_response')),
   ('view: project_progress',            to_regclass('public.project_progress') is not null),
   ('every project has an owner row',
      not exists (select 1 from public.projects p

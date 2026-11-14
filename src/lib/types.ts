@@ -103,7 +103,7 @@ export interface Poll {
   total_votes: number;
 }
 
-export type NotificationType = 'task_due_soon' | 'task_overdue' | 'project_due_soon' | 'task_assigned' | 'comment_added' | 'project_invite';
+export type NotificationType = 'task_due_soon' | 'task_overdue' | 'project_due_soon' | 'task_assigned' | 'comment_added' | 'project_invite' | 'invite_accepted' | 'invite_declined';
 export interface AppNotification {
   id: ID;
   user_id: string;

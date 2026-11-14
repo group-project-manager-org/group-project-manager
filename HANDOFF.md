@@ -190,6 +190,11 @@
     - decline and cancel,
     - re-inviting after someone leaves.
   - The UI was build-checked only, not clicked through, and the route needs real Clerk to run.
+- [2026-11-14] **Invite responses.** The user must run `supabase/migrations/0009_invite_responses.sql`, then `verify.sql`.
+  - `NotificationType` gains `'invite_accepted'` and `'invite_declined'`. They go to the inviter, for example `Bee accepted your invitation to "Essay"`, and link to the project.
+  - A delete trigger on `project_invitations` sends them, and only when the invitee deleted the row. Being a member afterwards means it was an accept; otherwise it was a decline. An owner cancel or a project delete sends nothing.
+  - The bell shows a mint icon for accepted and a coral icon for declined.
+  - Tested on local PostgREST: accept, decline, owner cancel and project delete.
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -254,7 +259,8 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0006_member_summaries.sql`, then `supabase/verify.sql`.
 - Run `supabase/migrations/0007_realtime.sql`, then `supabase/verify.sql` (every row should be PASS).
-- Run `supabase/migrations/0008_invitations.sql`, then `supabase/verify.sql`. After this, members join only by accepting an invitation. Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
+- Run `supabase/migrations/0008_invitations.sql`, then `supabase/verify.sql`. After this, members join only by accepting an invitation.
+- Run `supabase/migrations/0009_invite_responses.sql`, then `supabase/verify.sql`. Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
 - Fix owners shown as "Owner": add `SUPABASE_SECRET_KEY` to `.env.local`, then run `node --env-file=.env.local scripts/backfill-member-names.mjs`. It copies real names and avatars from Clerk into the `project_members` rows that 0001 backfilled as 'Owner'. Projects created through the current form already store the real name.
 - For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.
