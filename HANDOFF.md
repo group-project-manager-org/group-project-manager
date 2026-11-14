@@ -127,7 +127,20 @@
     - a fake metadata row is rejected,
     - a non-uploader member can't delete, and the object survives that attempt,
     - the uploader and the owner can delete, and the old signed URL stops working afterwards.
-- Next: B8 (notifications), Phase 3.
+- [2026-11-14] **B8 done.** The user must run `supabase/migrations/0005_notifications.sql`, then `verify.sql`.
+  - **`notifications` table:** a user reads and marks only their own rows. The only column clients can update is `read_at`. Clients cannot insert or delete.
+  - **Triggers:**
+    - `task_assigned` fires when `assignee_id` changes to someone other than the person making the change. Message: `Ay assigned you "Essay"`.
+    - `comment_added` goes to the task's creator and assignee, never the commenter. Message: `Bee commented on "Essay"`.
+  - **Reminders:** `create_due_reminders(p_today)` is a security definer function that only `service_role` can execute. It creates:
+    - `task_due_soon` for open tasks due today or tomorrow, sent to the assignee (or the creator if unassigned),
+    - `task_overdue` for open tasks past their due date,
+    - `project_due_soon` for projects due within 2 days, sent to every member.
+  - **Deduplication:** a unique `dedupe_key` allows one reminder per (type, task or project, user, day), so re-running the same day creates nothing. "Today" is Australia/Sydney.
+  - **`GET /api/cron/reminders`:** requires `Authorization: Bearer ${CRON_SECRET}`, uses `SUPABASE_SECRET_KEY`, and returns `{ created }`. `vercel.json` schedules it at `0 22 * * *` UTC, which is 08:00 AEST (09:00 during daylight saving). Vercel Cron sends the bearer header automatically when `CRON_SECRET` is set in the Vercel env.
+  - **`notifications.ts`:** `listNotifications` returns the latest 50, newest first. `markRead` and `markAllRead` only touch unread rows.
+  - Tested on local PostgREST: both triggers, the self-assign case producing no notification, clients blocked from inserting and from calling reminders, service_role reminders with dedupe, overdue and project-due cases, and mark read / all read staying scoped to the user.
+- Next: B9 (AI member summaries).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -181,6 +194,8 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0001_core.sql` in the SQL editor, then run `supabase/verify.sql`. Every row should say PASS.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
+- Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
+- For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.
 - After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
 - `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.

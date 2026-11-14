@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0004 (B7). Later migrations add their own checks here.
+-- Covers migrations up to 0005 (B8). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -8,7 +8,7 @@ truncate _verify;
 -- Tables exist and have RLS on
 insert into _verify (check_name, ok)
 select 'rls on: ' || t, coalesce((select c.relrowsecurity from pg_class c where c.oid = to_regclass('public.' || t)), false)
-from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files']) t;
+from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files', 'notifications']) t;
 
 -- Functions exist
 insert into _verify (check_name, ok)
@@ -35,7 +35,8 @@ from (values
   ('subtasks', 'subtasks_all'),
   ('comments', 'comments_select'), ('comments', 'comments_insert'), ('comments', 'comments_delete'),
   ('notes', 'notes_select'), ('notes', 'notes_insert'), ('notes', 'notes_update'), ('notes', 'notes_delete'),
-  ('files', 'files_select'), ('files', 'files_insert'), ('files', 'files_delete')
+  ('files', 'files_select'), ('files', 'files_insert'), ('files', 'files_delete'),
+  ('notifications', 'notifications_select'), ('notifications', 'notifications_update')
 ) as e (tbl, pol);
 
 -- The old "own rows only" policies are gone
@@ -58,6 +59,11 @@ values
   ('storage policies: project-files',
      (select count(*) = 3 from pg_policies where schemaname = 'storage' and tablename = 'objects'
         and policyname in ('project_files_select', 'project_files_insert', 'project_files_delete'))),
+  ('trigger: tasks_notify_assigned',    exists (select 1 from pg_trigger where tgname = 'tasks_notify_assigned')),
+  ('trigger: comments_notify_added',    exists (select 1 from pg_trigger where tgname = 'comments_notify_added')),
+  ('reminders not callable by clients',
+     not has_function_privilege('authenticated', 'public.create_due_reminders(date)', 'execute')
+     and not has_function_privilege('anon', 'public.create_due_reminders(date)', 'execute')),
   ('view: project_progress',            to_regclass('public.project_progress') is not null),
   ('every project has an owner row',
      not exists (select 1 from public.projects p
@@ -118,7 +124,7 @@ begin
          + (select count(*) from public.polls) + (select count(*) from public.poll_options)
          + (select count(*) from public.votes) + (select count(*) from public.tasks)
          + (select count(*) from public.comments) + (select count(*) from public.notes)
-         + (select count(*) from public.files)
+         + (select count(*) from public.files) + (select count(*) from public.notifications)
       into stranger_rows;
     begin
       insert into public.polls (project_id, question) values (v_pid, 'hijack');
