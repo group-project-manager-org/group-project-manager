@@ -109,7 +109,25 @@
   - **Pinning approach** (the spec asked us to note it): the update policy lets any member update a note, and the `notes_check_update` trigger rejects changes to `content` or `color` by anyone except the author. The error is `'Only the author can edit this note'`, code `42501`. Column grants limit updates to `content`, `color` and `pinned`. Toggling the pin also updates `updated_at`.
   - `notes.ts`: `listNotes` returns pinned notes first, then newest. Content is trimmed, and empty content is rejected by the DB check (1-1000 characters).
   - Tested on local PostgREST: pinning someone else's note works, editing it is blocked, delete is limited to the author or the owner, and a stranger sees nothing.
-- Next: B7 (files and storage).
+- [2026-11-14] **B7 done.** The user must run `supabase/migrations/0004_files.sql`, then `verify.sql`.
+  - **Bucket:** private bucket `project-files` with a 25 MB limit. Object paths are `{project_id}/{uuid}-{sanitised_name}`.
+  - **Storage policies:**
+    - Read and upload: members of the project whose id is the first path segment. A path that doesn't start with a number fails closed.
+    - Delete: the uploader (`owner_id`, which storage fills from the token's `sub`) or the project owner.
+  - **`files` table:** rows can't be updated. Members can read them. An insert must match an object that really exists in the project's folder, so fake rows are rejected. Delete is limited to the uploader or the owner.
+  - **`files.ts`:**
+    - `uploadFile` rejects files over 25 MB with `FILE_TOO_LARGE` before uploading. It uploads the object first, then inserts the row, and removes the object again if the insert fails.
+    - `getDownloadUrl` returns a 60-second signed URL that downloads under the original file name.
+    - `deleteFile` removes the object first, then the row, and throws `NOT_FOUND` when the caller isn't allowed.
+    - Errors use the codes `UPLOAD_FAILED`, `DELETE_FAILED` and `NOT_FOUND`.
+  - **Known gap:** deleting a *project* removes the file rows (cascade) but not the storage objects. Supabase doesn't let SQL delete objects safely. They're unreachable but use space. A later cleanup job could handle this.
+  - Tested against a real local Supabase `storage-api` plus PostgREST:
+    - a member uploads and another member downloads through the signed URL,
+    - a stranger can't list, sign a URL or upload,
+    - a fake metadata row is rejected,
+    - a non-uploader member can't delete, and the object survives that attempt,
+    - the uploader and the owner can delete, and the old signed URL stops working afterwards.
+- Next: B8 (notifications), Phase 3.
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -156,5 +174,6 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0001_core.sql` in the SQL editor, then run `supabase/verify.sql`. Every row should say PASS.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
+- Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.
 - After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
 - `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.
