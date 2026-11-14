@@ -9,13 +9,12 @@ import { USE_MOCKS, mockDeleteProject, mockListMyProjects } from './mocks';
 
 /** The current user's projects (sorted by due date) plus a delete action. */
 export function useMyProjects() {
-  // Not a dependency on purpose: useSupabase() returns a new client every render.
-  const sb = useSupabase();
+  const sb = useSupabase(); // stable identity since B2
   const actor = useActor();
 
   const state = useAsync(
     () => (USE_MOCKS ? mockListMyProjects(actor) : listMyProjects(sb)),
-    [actor?.user_id],
+    [sb, actor?.user_id],
     actor !== null,
   );
 

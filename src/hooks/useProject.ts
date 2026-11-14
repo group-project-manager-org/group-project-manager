@@ -13,15 +13,13 @@ import { USE_MOCKS, mockGetProject } from './mocks';
  * you aren't a member, so check `loading` first.
  */
 export function useProject(id: ID | null) {
-  // useSupabase() returns a new client every render, so it must NOT be a
-  // dependency; useAsync always calls the latest closure anyway.
-  const sb = useSupabase();
+  const sb = useSupabase(); // stable identity since B2
   const actor = useActor();
   const ready = id !== null && (!USE_MOCKS || actor !== null);
 
   const state = useAsync(
     () => (USE_MOCKS ? mockGetProject(id as ID, actor) : getProject(sb, id as ID)),
-    [id, actor?.user_id],
+    [sb, id, actor?.user_id],
     ready,
   );
   // Waiting on the user (mock mode) counts as loading, so the layout doesn't flash "not found".
