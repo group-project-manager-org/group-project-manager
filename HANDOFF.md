@@ -25,7 +25,32 @@
       - add the content length check.
     - `polls.project_id` has no foreign key, so deleting a project leaves orphaned polls behind. 0001 deletes the orphans and then adds the FK with `on delete cascade`.
     - `poll_options` and `votes` already have their foreign keys (`on update cascade on delete cascade`). There is no unique constraint on votes yet.
-- Next: B2 (`0001_core.sql`: core schema and RLS, plus `verify.sql`), then B4.
+- [2026-11-14] **B2 done.** The user must run `supabase/migrations/0001_core.sql`, then `supabase/verify.sql` (all rows should be PASS).
+  - `0001_core.sql` adds:
+    - the `requesting_user_id()` helper,
+    - `projects.description`,
+    - the `project_members` table,
+    - the `is_project_member` / `is_project_owner` helper functions,
+    - the `create_project` RPC (security definer, validates name 1-200 characters and that a due date is given),
+    - membership-based RLS on projects, members, polls, options and votes,
+    - the FK `polls.project_id → projects` (cascade),
+    - the `votes_one_per_user` unique constraint.
+  - **Owner trigger:** `projects_add_owner` adds the owner's membership row on every project insert, so the old add page (direct insert) keeps working until F3 switches to `createProject`. Owner rows from the trigger or backfill have `display_name = 'Owner'`; `create_project` stores the real name.
+  - **Defaults:** `user_id` on polls, poll_options and votes now defaults to the caller, so `createPoll` / `vote` don't send it.
+  - **Policy choices:**
+    - Only a poll's author can add options to it (stricter than the spec's "members").
+    - Members can only update their own `display_name` / `image_url`. This is a column grant, so they can't change `role`.
+    - A project update must keep `user_id` as the caller, so ownership can't be handed away.
+  - **Data cleanup** when 0001 runs:
+    - It deletes orphaned polls (no project or a deleted project), along with their options and votes.
+    - It deletes duplicate votes, keeping each user's newest.
+    - It stops with an error, and deletes nothing, if any project has no valid `user_id`. The message explains how to fix it.
+  - **Tested** on a local Supabase Postgres seeded to match the live schema and policies:
+    - 0001 ran twice cleanly, and all 43 `verify.sql` checks passed.
+    - The old add/edit page queries still work, and a second `vote()` upsert changes the vote instead of adding one.
+    - `verify.sql` reports FAIL when RLS is turned off.
+  - `src/lib/supabaseClient.tsx`: `useSupabase()` now returns a stable client (one per component) and skips `getToken()` on the server. Both items from "Notes for backend" are fixed.
+- Next: B4 (projects and members data layer, plus the member and search API routes). It includes the `project_progress` view early, because `listMyProjects` needs it.
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -48,12 +73,18 @@ Both fixed in F0; `npm run build` passes.
 - `src/app/project/[id]/page.tsx:8` (bug 1): `TaskCard` now exports its temporary mock `Task` type so the page compiles. The real fix (TaskCard using `Task` from `@/lib/types`) comes with F4, because the mock shape differs (inline `comments` array).
 - `src/app/project/[id]/files/page.tsx`: now a placeholder page until F7.
 
+## Notes for frontend
+- [B2] `useSupabase()` now returns a stable client, so it is safe to use `sb` as an effect dependency. The build no longer logs the Realtime token warning.
+- [B2] After 0001 is run, the polls page shows everyone's votes (before, it only showed your own). Only the poll's author can add options.
+
 ## Notes for backend
-- `useSupabase()` creates a new Supabase client on **every render**. Any `useEffect` that lists the client as a dependency will refetch in a loop, and it also spawns many GoTrue/Realtime clients. Suggest wrapping `createClient(...)` in `useMemo(..., [getToken])` (or a module-level singleton whose `accessToken` reads the latest `getToken`). The frontend works around it for now by never using `sb` as a dependency.
-- `npm run build` logs `Failed to set initial Realtime auth token ... clerk_runtime_not_browser` from `src/lib/supabaseClient.tsx` during prerender. Harmless, but the client probably shouldn't call `getToken()` on the server (e.g. skip `accessToken` when `typeof window === 'undefined'`).
+- ~~(fixed in B2)~~ `useSupabase()` creates a new Supabase client on **every render**. Any `useEffect` that lists the client as a dependency will refetch in a loop, and it also spawns many GoTrue/Realtime clients. Suggest wrapping `createClient(...)` in `useMemo(..., [getToken])` (or a module-level singleton whose `accessToken` reads the latest `getToken`). The frontend works around it for now by never using `sb` as a dependency.
+- ~~(fixed in B2)~~ `npm run build` logs `Failed to set initial Realtime auth token ... clerk_runtime_not_browser` from `src/lib/supabaseClient.tsx` during prerender. Harmless, but the client probably shouldn't call `getToken()` on the server (e.g. skip `accessToken` when `typeof window === 'undefined'`).
 
 ## Manual steps for the user
 - Set up Clerk third-party auth in Supabase. See `supabase/README.md` step 1; skip it if the app can already read data while signed in.
 - Run `supabase/migrations/0000_baseline.sql`. It is safe on the existing database and does nothing there.
 - ~~Before 0001: export policies and columns (README step 3).~~ Done 2026-11-14.
+- Run `supabase/migrations/0001_core.sql` in the SQL editor, then run `supabase/verify.sql`. Every row should say PASS.
+- After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
 - `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.
