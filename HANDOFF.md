@@ -58,7 +58,22 @@
   - In every summary, `members` lists the owner first, then by `joined_at`.
   - **Progress is always 0 for now:** `task_total`, `task_done` and `progress` stay 0 until the tasks table and the `project_progress` view land in B3.
   - Tested against a local PostgREST and Postgres running 0001, using owner, member and stranger tokens.
-- Next: B4 part 2 (`members.ts`, `supabaseServer.ts`, the member and search API routes). It includes the `project_progress` view early, because `listMyProjects` needs it.
+- [2026-11-14] **B4 done.**
+  - `members.ts`: `listMembers` returns the owner first. `removeMember` throws `NOT_FOUND` when the row isn't there or RLS blocks it, for example a member removing the owner or the owner removing themselves.
+  - `src/lib/supabaseServer.ts`: `createServerSupabase()` sends the caller's Clerk token, so RLS still applies on the server.
+  - `POST /api/projects/[id]/members` returns:
+    - 401 when not signed in,
+    - 400 for a bad id or email,
+    - 403 "Only the project owner can add members",
+    - 404 "No NYX account with that email",
+    - 409 "That person is already a member",
+    - 201 with the `Member` on success.
+  - The insert runs as the owner, so RLS enforces owner-only a second time.
+  - `GET /api/users/search?q=` returns 400 when `q` has fewer than 3 characters. Otherwise it returns up to 5 users whose email **starts with** `q`. Clerk's `query` also matches names, so those results are filtered out. Existing members are included; the UI hides them.
+  - `src/proxy.ts`: `/api(.*)` no longer goes through `auth.protect()`. Each route checks `auth()` itself and returns a JSON 401, and the cron route (B8) will use its own secret instead of a session.
+  - The routes aren't tested end to end, because that needs real Clerk keys. `members.ts` and the RLS the routes rely on were tested against local PostgREST.
+  - **Privacy:** any signed-in user can search by email prefix, so they can find whether an address has an account and see its name and avatar. That's what the spec asks for; tighten it later if needed, for example by allowing only owners to search.
+- Next: B3 (tasks, subtasks, comments, and the `project_progress` view).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
