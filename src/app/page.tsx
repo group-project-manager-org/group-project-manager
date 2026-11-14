@@ -3,16 +3,24 @@
 import Link from 'next/link';
 import GroupAssignment from '@/components/GroupAssignment';
 import AppNav from '@/components/AppNav';
+import PendingInvitations from '@/components/PendingInvitations';
 import { EmptyState, ErrorBanner, LoadingBlock } from '@/components/ui';
+import { useMyInvitations } from '@/hooks/useMyInvitations';
 import { useMyProjects } from '@/hooks/useMyProjects';
 import { daysUntil } from '@/lib/utils/dates';
-import type { ProjectSummary } from '@/lib/types';
+import type { ID, ProjectSummary } from '@/lib/types';
 
 const ADD_LINK_CLASS =
   'flex h-14 w-80 max-w-full items-center justify-center rounded-xl bg-gradient-to-br from-nyx-violet to-nyx-violet-dark text-lg font-semibold font-geist-mono text-white shadow-lg shadow-nyx-violet/30 transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet focus-visible:ring-offset-2 focus-visible:ring-offset-nyx-bg';
 
 export default function Home() {
   const { data: projects, loading, error, reload, remove } = useMyProjects();
+  const invitations = useMyInvitations();
+
+  async function acceptInvitation(id: ID) {
+    await invitations.accept(id);
+    await reload(); // the new project now shows in the list
+  }
 
   // listMyProjects is already sorted by due date; overdue ones move to the bottom.
   const upcoming: ProjectSummary[] = [];
@@ -82,7 +90,14 @@ export default function Home() {
         </div>
       )}
 
-      <div className="px-4 pb-16 sm:px-6">{list}</div>
+      <div className="px-4 pb-16 sm:px-6">
+        <PendingInvitations
+          invitations={invitations.data ?? []}
+          onAccept={acceptInvitation}
+          onDecline={invitations.decline}
+        />
+        {list}
+      </div>
     </main>
   );
 }

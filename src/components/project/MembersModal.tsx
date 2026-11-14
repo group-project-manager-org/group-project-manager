@@ -6,13 +6,13 @@ import { useActor } from '@/hooks/useActor';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useProjectActions } from '@/hooks/useProjectActions';
 import type { UserSearchResult } from '@/lib/api';
-import type { Member, ProjectSummary } from '@/lib/types';
+import type { ID, Invitation, Member, ProjectSummary } from '@/lib/types';
 
 export interface MembersModalProps {
   open: boolean;
   onClose: () => void;
   project: ProjectSummary;
-  /** Called after a member is added or removed, so the parent can reload. */
+  /** Called after a member is removed, so the parent can reload. */
   onChanged: () => void | Promise<void>;
   /** Called after the current user leaves the project. */
   onLeft: () => void;
@@ -31,7 +31,7 @@ export default function MembersModal({ open, onClose, project, onChanged, onLeft
 
   return (
     <Modal open={open} onClose={onClose} title={`Members · ${project.members.length}`}>
-      {isOwner && <AddMemberForm project={project} onAdded={onChanged} />}
+      {isOwner && open && <OwnerInvites project={project} />}
 
       <ul className={cx('flex flex-col gap-2', isOwner && 'mt-5')}>
         {members.map((m) => (
@@ -105,7 +105,7 @@ function MemberRow({
         <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2 border-t border-nyx-border pt-2.5">
           <span className="mr-auto text-xs text-slate-300">
             {canLeave
-              ? "Leave this project? You'll lose access until the owner adds you again."
+              ? "Leave this project? You'll lose access until the owner invites you again."
               : `Remove ${member.display_name} from this project?`}
           </span>
           <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={busy}>
@@ -121,12 +121,77 @@ function MemberRow({
   );
 }
 
-function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded: () => void | Promise<void> }) {
-  const { addMemberByEmail, searchUsers } = useProjectActions();
-  const [email, setEmail] = useState('');
-  const [adding, setAdding] = useState(false);
+/** Invite form plus the list of invitations still waiting for an answer. Owner only. */
+function OwnerInvites({ project }: { project: ProjectSummary }) {
+  const { listProjectInvitations, cancelInvitation } = useProjectActions();
+  const [pending, setPending] = useState<Invitation[]>([]);
   const [error, setError] = useState<unknown>(null);
-  const [added, setAdded] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stale = false;
+    listProjectInvitations(project.id)
+      .then((list) => !stale && setPending(list))
+      .catch((e) => !stale && setError(e));
+    return () => {
+      stale = true;
+    };
+  }, [project.id, listProjectInvitations]);
+
+  async function cancel(id: ID) {
+    setError(null);
+    try {
+      await cancelInvitation(id);
+      setPending((prev) => prev.filter((i) => i.id !== id));
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  return (
+    <>
+      <InviteForm
+        project={project}
+        pendingIds={new Set(pending.map((i) => i.invitee_id))}
+        onInvited={(inv) => setPending((prev) => [...prev, inv])}
+      />
+      {pending.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 font-geist-mono text-xs uppercase tracking-wider text-nyx-muted">
+            Waiting to accept · {pending.length}
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {pending.map((inv) => (
+              <li key={inv.id} className="flex items-center gap-3 rounded-xl bg-nyx-bg px-3 py-2.5">
+                <Avatar name={inv.invitee_name} imageUrl={inv.invitee_image_url} seed={inv.invitee_id} size="md" />
+                <span className="min-w-0 flex-1 truncate text-sm">{inv.invitee_name}</span>
+                <Badge tone="muted">invited</Badge>
+                <Button variant="ghost" size="sm" onClick={() => void cancel(inv.id)}>
+                  Cancel
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <ErrorBanner error={error} className="mt-2" />
+    </>
+  );
+}
+
+function InviteForm({
+  project,
+  pendingIds,
+  onInvited,
+}: {
+  project: ProjectSummary;
+  pendingIds: Set<string>;
+  onInvited: (inv: Invitation) => void;
+}) {
+  const { inviteByEmail, searchUsers } = useProjectActions();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [invited, setInvited] = useState<string | null>(null);
 
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -142,7 +207,7 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
     setSearching(true);
     searchUsers(query)
       .then((r) => !stale && setResults(r))
-      // Search is only a convenience; typing the full email and pressing Add still works.
+      // Search is only a convenience; typing the full email and pressing Invite still works.
       .catch(() => !stale && setResults([]))
       .finally(() => !stale && setSearching(false));
     return () => {
@@ -151,39 +216,39 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
   }, [query, searchUsers]);
 
   const memberIds = new Set(project.members.map((m) => m.user_id));
-  const suggestions = results.filter((r) => !memberIds.has(r.user_id));
+  const suggestions = results.filter((r) => !memberIds.has(r.user_id) && !pendingIds.has(r.user_id));
 
-  async function add(target: string) {
+  async function invite(target: string) {
     const value = target.trim().toLowerCase();
     if (!EMAIL_RE.test(value)) {
       setError('Enter a full email address, e.g. alex@uni.edu');
       return;
     }
-    setAdding(true);
+    setSending(true);
     setError(null);
-    setAdded(null);
+    setInvited(null);
     try {
-      const m = await addMemberByEmail(project.id, value);
+      const inv = await inviteByEmail(project.id, value);
       setEmail('');
       setResults([]);
-      setAdded(m.display_name);
-      await onAdded();
+      setInvited(inv.invitee_name);
+      onInvited(inv);
     } catch (e) {
       setError(e);
     } finally {
-      setAdding(false);
+      setSending(false);
     }
   }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    void add(email);
+    void invite(email);
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <label htmlFor="member-email" className="text-sm font-medium text-slate-300">
-        Add a member by email
+        Invite a member by email
       </label>
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -196,14 +261,14 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
             onChange={(e) => {
               setEmail(e.target.value);
               setError(null);
-              setAdded(null);
+              setInvited(null);
             }}
             className="w-full rounded-lg border border-nyx-border bg-nyx-bg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-nyx-violet"
           />
           {searching && <Spinner size="sm" className="absolute right-3 top-3" label="Searching" />}
         </div>
-        <Button type="submit" loading={adding} disabled={!email.trim()}>
-          Add
+        <Button type="submit" loading={sending} disabled={!email.trim()}>
+          Invite
         </Button>
       </div>
 
@@ -213,8 +278,8 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
             <li key={u.user_id}>
               <button
                 type="button"
-                disabled={adding}
-                onClick={() => void add(u.email)}
+                disabled={sending}
+                onClick={() => void invite(u.email)}
                 className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-nyx-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet disabled:opacity-50"
               >
                 <Avatar name={u.display_name} imageUrl={u.image_url} seed={u.user_id} size="sm" />
@@ -222,7 +287,7 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
                   <span className="block truncate text-sm">{u.display_name}</span>
                   <span className="block truncate font-geist-mono text-[11px] text-nyx-muted">{u.email}</span>
                 </span>
-                <span className="font-geist-mono text-xs text-nyx-violet">+ Add</span>
+                <span className="font-geist-mono text-xs text-nyx-violet">+ Invite</span>
               </button>
             </li>
           ))}
@@ -230,9 +295,9 @@ function AddMemberForm({ project, onAdded }: { project: ProjectSummary; onAdded:
       )}
 
       <ErrorBanner error={error} />
-      {added && (
+      {invited && (
         <p role="status" className="font-geist-mono text-xs text-nyx-mint">
-          {added} was added to the project.
+          {invited} has been invited. They&apos;ll join once they accept.
         </p>
       )}
     </form>

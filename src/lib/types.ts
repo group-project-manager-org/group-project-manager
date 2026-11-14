@@ -103,7 +103,7 @@ export interface Poll {
   total_votes: number;
 }
 
-export type NotificationType = 'task_due_soon' | 'task_overdue' | 'project_due_soon' | 'task_assigned' | 'comment_added';
+export type NotificationType = 'task_due_soon' | 'task_overdue' | 'project_due_soon' | 'task_assigned' | 'comment_added' | 'project_invite';
 export interface AppNotification {
   id: ID;
   user_id: string;
@@ -112,6 +112,19 @@ export interface AppNotification {
   type: NotificationType;
   message: string;
   read_at: string | null;
+  created_at: string;
+}
+
+/** A pending invitation; it disappears once accepted, declined or cancelled. */
+export interface Invitation {
+  id: ID;
+  project_id: ID;
+  project_name: string;
+  invitee_id: string;
+  invitee_name: string;
+  invitee_image_url: string | null;
+  invited_by: string;
+  inviter_name: string;
   created_at: string;
 }
 

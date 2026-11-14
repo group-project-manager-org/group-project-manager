@@ -7,7 +7,7 @@ type ProjectRow = Project & { members: Member[] };
 const SUMMARY_SELECT = '*, members:project_members(*)';
 
 /** The Clerk user id Supabase sees for this client's token. */
-async function currentUserId(sb: SupabaseClient): Promise<string> {
+export async function currentUserId(sb: SupabaseClient): Promise<string> {
   const { data, error } = await sb.rpc('requesting_user_id');
   if (error) throw toDbError(error);
   if (!data) throw new DbError('You must be signed in', 'NOT_AUTHENTICATED');

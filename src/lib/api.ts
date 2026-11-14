@@ -1,6 +1,5 @@
 // Client helpers for the API routes in src/app/api (spec 3.3).
-// The routes themselves land in B4 (members, search) and B9 (summary); until then these calls get a 404 ApiError.
-import type { ID, Member, MemberSummary } from './types';
+import type { ID, Invitation, MemberSummary } from './types';
 
 export interface UserSearchResult {
   user_id: string;
@@ -38,9 +37,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-/** Owner only. 404 if no account has that email, 409 if already a member. */
-export function addMemberByEmail(projectId: ID, email: string): Promise<Member> {
-  return request<Member>(`/api/projects/${projectId}/members`, {
+/** Owner only. Sends an invitation the person must accept. 404 if no account has that email, 409 if already a member or invited. */
+export function inviteByEmail(projectId: ID, email: string): Promise<Invitation> {
+  return request<Invitation>(`/api/projects/${projectId}/invitations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),

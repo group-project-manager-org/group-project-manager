@@ -14,7 +14,7 @@ export async function listMembers(sb: SupabaseClient, projectId: ID): Promise<Me
   return data as Member[];
 }
 
-/** Owner removes anyone except self; a member can remove self (leave). Adding goes through addMemberByEmail in src/lib/api.ts. */
+/** Owner removes anyone except self; a member can remove self (leave). People join by accepting an invitation (inviteByEmail in src/lib/api.ts, acceptInvitation in ./invitations). */
 export async function removeMember(sb: SupabaseClient, projectId: ID, userId: string): Promise<void> {
   const { data, error } = await sb
     .from('project_members')

@@ -8,11 +8,13 @@ import {
   RiCalendarEventLine,
   RiChat3Line,
   RiErrorWarningLine,
+  RiMailLine,
   RiNotification3Line,
   RiUserAddLine,
 } from 'react-icons/ri';
 import { ErrorBanner, Spinner, cx, timeAgo } from '@/components/ui';
 import { useDismiss } from '@/hooks/useDismiss';
+import { INVITATIONS_CHANGED } from '@/hooks/useMyInvitations';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { AppNotification, NotificationType } from '@/lib/types';
 
@@ -22,6 +24,7 @@ const TYPE_META: Record<NotificationType, { icon: IconType; color: string }> = {
   project_due_soon: { icon: RiCalendarEventLine, color: 'text-nyx-gold' },
   task_assigned: { icon: RiUserAddLine, color: 'text-nyx-violet' },
   comment_added: { icon: RiChat3Line, color: 'text-nyx-mint' },
+  project_invite: { icon: RiMailLine, color: 'text-nyx-violet' },
 };
 
 const SHOW_MAX = 20;
@@ -39,7 +42,11 @@ export default function NotificationBell() {
   function openItem(n: AppNotification) {
     if (!n.read_at) void markOneRead(n.id);
     setOpen(false);
-    if (n.project_id !== null) {
+    // The invitee can't open the project until they accept; invitations are listed on the home page.
+    if (n.type === 'project_invite') {
+      window.dispatchEvent(new Event(INVITATIONS_CHANGED)); // refresh the list if home is already open
+      router.push('/#invitations-heading');
+    } else if (n.project_id !== null) {
       router.push(`/project/${n.project_id}${n.task_id !== null ? `?task=${n.task_id}` : ''}`);
     }
   }

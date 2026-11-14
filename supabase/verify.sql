@@ -1,6 +1,6 @@
 -- verify.sql: run in the Supabase SQL editor after each migration. Returns one table; every row should be PASS.
 -- Changes nothing: the behaviour tests run inside a block that rolls itself back.
--- Covers migrations up to 0007 (B10). Later migrations add their own checks here.
+-- Covers migrations up to 0008 (invitations). Later migrations add their own checks here.
 
 create temp table if not exists _verify (n serial, check_name text, ok boolean, detail text);
 truncate _verify;
@@ -8,7 +8,7 @@ truncate _verify;
 -- Tables exist and have RLS on
 insert into _verify (check_name, ok)
 select 'rls on: ' || t, coalesce((select c.relrowsecurity from pg_class c where c.oid = to_regclass('public.' || t)), false)
-from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files', 'notifications', 'member_summaries']) t;
+from unnest(array['projects', 'project_members', 'polls', 'poll_options', 'votes', 'comments', 'tasks', 'subtasks', 'notes', 'files', 'notifications', 'member_summaries', 'project_invitations']) t;
 
 -- Functions exist
 insert into _verify (check_name, ok)
@@ -17,7 +17,8 @@ from unnest(array[
   'public.requesting_user_id()',
   'public.is_project_member(bigint)',
   'public.is_project_owner(bigint)',
-  'public.create_project(text,text,date,text,text)'
+  'public.create_project(text,text,date,text,text)',
+  'public.accept_invitation(bigint)'
 ]) f;
 
 -- Expected policies are present
@@ -26,7 +27,7 @@ select 'policy: ' || e.tbl || '.' || e.pol,
        exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = e.tbl and p.policyname = e.pol)
 from (values
   ('projects', 'projects_select'), ('projects', 'projects_insert'), ('projects', 'projects_update'), ('projects', 'projects_delete'),
-  ('project_members', 'project_members_select'), ('project_members', 'project_members_insert'),
+  ('project_members', 'project_members_select'),
   ('project_members', 'project_members_update'), ('project_members', 'project_members_delete'),
   ('polls', 'polls_select'), ('polls', 'polls_insert'), ('polls', 'polls_delete'),
   ('poll_options', 'poll_options_select'), ('poll_options', 'poll_options_insert'),
@@ -37,7 +38,9 @@ from (values
   ('notes', 'notes_select'), ('notes', 'notes_insert'), ('notes', 'notes_update'), ('notes', 'notes_delete'),
   ('files', 'files_select'), ('files', 'files_insert'), ('files', 'files_delete'),
   ('notifications', 'notifications_select'), ('notifications', 'notifications_update'),
-  ('member_summaries', 'member_summaries_select')
+  ('member_summaries', 'member_summaries_select'),
+  ('project_invitations', 'project_invitations_select'), ('project_invitations', 'project_invitations_insert'),
+  ('project_invitations', 'project_invitations_delete')
 ) as e (tbl, pol);
 
 -- The old "own rows only" policies are gone
@@ -68,6 +71,9 @@ values
   ('realtime publication has project tables',
      (select count(*) = 7 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public'
         and tablename in ('tasks', 'subtasks', 'comments', 'notes', 'polls', 'votes', 'files'))),
+  ('members join only via invitations',
+     not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'project_members' and cmd = 'INSERT')),
+  ('trigger: project_invitations_notify', exists (select 1 from pg_trigger where tgname = 'project_invitations_notify')),
   ('view: project_progress',            to_regclass('public.project_progress') is not null),
   ('every project has an owner row',
      not exists (select 1 from public.projects p

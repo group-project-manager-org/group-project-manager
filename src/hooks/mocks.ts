@@ -7,7 +7,7 @@
  * full page refresh.
  */
 import { ApiError, type UserSearchResult } from '@/lib/api';
-import type { Actor, ID, Member, Project, ProjectSummary } from '@/lib/types';
+import type { Actor, ID, Invitation, Member, Project, ProjectSummary } from '@/lib/types';
 
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === '1';
 
@@ -162,25 +162,26 @@ export async function mockSearchUsers(q: string): Promise<UserSearchResult[]> {
   return DIRECTORY.filter((u) => u.email.startsWith(needle)).slice(0, 5);
 }
 
-/** Mock for addMemberByEmail: same errors as the real route. */
-export async function mockAddMemberByEmail(projectId: ID, email: string): Promise<Member> {
+/** Mock for inviteByEmail: same errors as the real route. The mock invitee never accepts. */
+export async function mockInviteByEmail(projectId: ID, email: string): Promise<Invitation> {
   await delay();
   const p = store?.find((x) => x.id === projectId);
   if (!p) throw new ApiError('Project not found', 404);
-  if (p.my_role !== 'owner') throw new ApiError('Only the project owner can add members', 403);
+  if (p.my_role !== 'owner') throw new ApiError('Only the project owner can invite members', 403);
   const user = DIRECTORY.find((u) => u.email === email.trim().toLowerCase());
   if (!user) throw new ApiError('No NYX account with that email', 404);
-  if (p.members.some((m) => m.user_id === user.user_id)) throw new ApiError('Already a member of this project', 409);
-  const member: Member = {
+  if (p.members.some((m) => m.user_id === user.user_id)) throw new ApiError('That person is already a member', 409);
+  return {
+    id: Date.now(),
     project_id: projectId,
-    user_id: user.user_id,
-    display_name: user.display_name,
-    image_url: user.image_url,
-    role: 'member',
-    joined_at: new Date().toISOString(),
+    project_name: p.project_name,
+    invitee_id: user.user_id,
+    invitee_name: user.display_name,
+    invitee_image_url: user.image_url,
+    invited_by: 'me',
+    inviter_name: 'You',
+    created_at: new Date().toISOString(),
   };
-  p.members = [...p.members, member];
-  return member;
 }
 
 /** Mock for removeMember: owner removes others, a member removes themself (leave). */

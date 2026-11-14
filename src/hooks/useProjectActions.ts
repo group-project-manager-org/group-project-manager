@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { addMemberByEmail, searchUsers } from '@/lib/api';
+import { inviteByEmail, searchUsers } from '@/lib/api';
+import { deleteInvitation, listProjectInvitations } from '@/lib/db/invitations';
 import { removeMember } from '@/lib/db/members';
 import { createProject, updateProject } from '@/lib/db/projects';
 import { useSupabase } from '@/lib/supabaseClient';
@@ -9,8 +10,8 @@ import type { Actor, ID, Project } from '@/lib/types';
 import { useActor } from './useActor';
 import {
   USE_MOCKS,
-  mockAddMemberByEmail,
   mockCreateProject,
+  mockInviteByEmail,
   mockRemoveMember,
   mockSearchUsers,
   mockUpdateProject,
@@ -35,8 +36,11 @@ export function useProjectActions() {
         USE_MOCKS ? mockUpdateProject(id, patch) : updateProject(sb, id, patch),
       removeMember: (projectId: ID, userId: string) =>
         USE_MOCKS ? mockRemoveMember(projectId, userId, actor) : removeMember(sb, projectId, userId),
-      addMemberByEmail: (projectId: ID, email: string) =>
-        USE_MOCKS ? mockAddMemberByEmail(projectId, email) : addMemberByEmail(projectId, email),
+      inviteByEmail: (projectId: ID, email: string) =>
+        USE_MOCKS ? mockInviteByEmail(projectId, email) : inviteByEmail(projectId, email),
+      listProjectInvitations: (projectId: ID) =>
+        USE_MOCKS ? Promise.resolve([]) : listProjectInvitations(sb, projectId),
+      cancelInvitation: (invitationId: ID) => (USE_MOCKS ? Promise.resolve() : deleteInvitation(sb, invitationId)),
       searchUsers: (q: string) => (USE_MOCKS ? mockSearchUsers(q) : searchUsers(q)),
     }),
     [sb, actor],
