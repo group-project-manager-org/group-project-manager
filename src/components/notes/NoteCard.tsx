@@ -131,8 +131,6 @@ export default function NoteCard({ note, isMine, canDelete, onTogglePin, onSave,
     );
   }
 
-  const edited = note.updated_at !== note.created_at;
-
   return (
     <article className={cx('group flex flex-col gap-3 rounded-2xl border border-nyx-border border-l-4 p-4', colorMeta(note.color).card)}>
       <div className="flex items-start gap-2">
@@ -167,10 +165,8 @@ export default function NoteCard({ note, isMine, canDelete, onTogglePin, onSave,
         {note.pinned && <span aria-hidden>📌</span>}
         <span className="truncate">{note.user_name}</span>
         <span aria-hidden>·</span>
-        <time dateTime={note.created_at} title={edited ? `Edited ${timeAgo(note.updated_at)}` : undefined}>
-          {timeAgo(note.created_at)}
-          {edited && ' (edited)'}
-        </time>
+        {/* No "(edited)" label: pinning also bumps updated_at (B6), so it can't tell edits apart. */}
+        <time dateTime={note.created_at}>{timeAgo(note.created_at)}</time>
         {canDelete && (
           <button
             type="button"

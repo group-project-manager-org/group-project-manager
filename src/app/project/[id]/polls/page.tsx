@@ -72,7 +72,8 @@ export default function PollsPage() {
     } else {
         body = (
             <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-                {polls.map((poll) => (
+                {/* Newest first (listPolls returns oldest first). */}
+                {[...polls].sort((a, b) => b.created_at.localeCompare(a.created_at)).map((poll) => (
                     <PollCard
                         key={poll.id}
                         poll={poll}
