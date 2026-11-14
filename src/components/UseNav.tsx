@@ -1,6 +1,7 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import NotificationBell from "./NotificationBell";
 
 export default function UserNav() {
   const { user } = useUser();
@@ -12,7 +13,8 @@ export default function UserNav() {
         <SignUpButton />
       </Show>
       <Show when="signed-in">
-        <span className="text-sm font-medium text-slate-300">
+        <NotificationBell />
+        <span className="hidden text-sm font-medium text-slate-300 sm:inline">
           {user?.firstName ?? user?.fullName}
         </span>
         <UserButton />

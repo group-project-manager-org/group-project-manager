@@ -11,10 +11,10 @@ import type { Actor, ID, Member, Project, ProjectSummary } from '@/lib/types';
 
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === '1';
 
-const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+export const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 const DAY = 86_400_000;
 
-function ymdFromToday(days: number): string {
+export function ymdFromToday(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -27,7 +27,7 @@ const OTHERS = [
   { user_id: 'mock_sam', display_name: 'Sam Patel' },
 ];
 
-function me(actor: Actor | null) {
+export function me(actor: Actor | null) {
   return {
     user_id: actor?.user_id ?? 'mock_me',
     display_name: actor?.display_name ?? 'You',
