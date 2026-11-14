@@ -1,142 +1,72 @@
 'use client'
 
-import { useSupabase } from '../../../lib/supabaseClient'
-import { useUser  } from "@clerk/nextjs";
+import { use } from 'react'
 import Link from 'next/link'
-import UserNav from "../../../components/UseNav";
-import { use } from "react";
 import { useRouter } from 'next/navigation'
-import {useEffect, useState} from 'react'
-import { LoadingBlock } from '@/components/ui'
+import AppNav from '@/components/AppNav'
+import ProjectForm from '@/components/ProjectForm'
+import { Card, ErrorBanner, LoadingBlock } from '@/components/ui'
+import { useProject } from '@/hooks/useProject'
+import { useProjectActions } from '@/hooks/useProjectActions'
 
+export default function EditGroupAssignmentPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id: rawId } = use(params)
+    const n = Number(rawId)
+    const id = Number.isSafeInteger(n) && n > 0 ? n : null
 
-export default function EditGrpAssignment({ params }: {params: Promise<{ id: string }>;
-}) {
-
-    const { id } = use(params);
-    const [name, setName] = useState('')
-    const [dueDate, setDueDate] = useState('')
-    const [members, setMembers] = useState('')
-
-    const supabase = useSupabase()
     const router = useRouter()
+    const { data: project, loading, error, reload } = useProject(id)
+    const { updateProject } = useProjectActions()
 
-
-    const { user, isLoaded } = useUser();
-
-    useEffect(() => {
-          const fetchProjects = async () => {
-            const {data, error} =  await supabase.from('projects').select().eq('id', id).single();
-    
-            if(error) {
-            console.error(error);
-            }
-            setName(data.project_name)
-            setDueDate(data.due_date)            
-          }
-          fetchProjects()
-        }, [])
-    
-    if (!isLoaded || !user) {
-        // proxy.ts already requires sign-in, so this is only visible while Clerk loads.
-        return (
-            <main className="min-h-screen bg-nyx-bg text-slate-100">
-                <LoadingBlock />
-            </main>
+    let body
+    if (error) {
+        body = <ErrorBanner error={error} onRetry={reload} />
+    } else if (id !== null && loading && !project) {
+        body = <LoadingBlock label="Loading project" />
+    } else if (!project) {
+        body = <Message title="Project not found" text="It may have been deleted, or you aren't a member of this project." />
+    } else if (project.my_role !== 'owner') {
+        body = <Message title="Only the owner can edit this project" text="Ask the project owner to make changes." />
+    } else {
+        body = (
+            <ProjectForm
+                key={project.id}
+                initial={{
+                    project_name: project.project_name,
+                    description: project.description ?? '',
+                    due_date: project.due_date,
+                }}
+                submitLabel="Save Changes"
+                onSubmit={async (values) => {
+                    await updateProject(project.id, values)
+                    router.push(`/project/${project.id}`)
+                }}
+            />
         )
     }
 
-    function getDateString() {
-        const date = new Date()
-        return date.toISOString().split("T")[0];
-    }
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        const { error } = await supabase
-        .from('projects')
-        .update({ user_id: user.id, project_name: name, due_date: dueDate})
-        .eq('id', id);
-        console.log(error);
-        router.push('/')
-    }
-
-    
-
     return (
-        <main className="min-h-screen bg-[#0B0817] text-slate-100">
-        <nav className="flex items-center justify-between border-b border-[#2C2650] px-6 py-4">
-            <div>
-            <p className="text-lg font-semibold tracking-tight">Group Project Manager</p>
-            <p className="text-sm text-slate-400">
-                Keep your team aligned and moving forward.
-            </p>
-            </div>
-
-            <UserNav />
-        </nav>
-
-        <section className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-16">
-            <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Edit Group Assignment
-            </h1>
-            <p className="text-slate-400">
-                Fill in the details below to the edit assignment for your group.
-            </p>
-            </div>
-
-            <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-6 rounded-2xl border border-[#2C2650] bg-[#13102A] p-8 shadow-lg shadow-black/20"
-            >
-            <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-300">
-                Assignment Name
-                </label>
-                <input
-                type="text"
-                placeholder="eg: Cybersecurity Assignment 1"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="rounded-lg border border-[#2C2650] bg-[#0B0817] px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-[#8B6FFF]"
-                />
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-300">
-                Assignment Due On
-                </label>
-                <input
-                type="date"
-                min = {getDateString()}
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="rounded-lg border border-[#2C2650] bg-[#0B0817] px-4 py-3 text-slate-100 outline-none transition-colors focus:border-[#8B6FFF] [color-scheme:dark]"
-                />
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-300">
-                Add Group Members
-                </label>
-                <input
-                type="text"
-                placeholder="eg: alice@example.com, bob@example.com"
-                value={members}
-                onChange={(e) => setMembers(e.target.value)}
-                className="rounded-lg border border-[#2C2650] bg-[#0B0817] px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-[#8B6FFF]"
-                />
-            </div>
-
-            <button
-                type = "submit"
-                className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#8B6FFF] to-[#6a4ee0] text-lg font-semibold font-geist-mono text-white shadow-lg shadow-[#8B6FFF]/30 transition-transform hover:scale-[1.02]"
-            >
-                Edit Assignment
-            </button>
-            </form>
-        </section>
+        <main className="min-h-screen bg-nyx-bg text-slate-100">
+            <AppNav />
+            <section className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-16">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Edit Group Assignment</h1>
+                    <p className="text-slate-400">Update the details for your group.</p>
+                </div>
+                {body}
+            </section>
         </main>
+    )
+}
+
+function Message({ title, text }: { title: string; text: string }) {
+    return (
+        <Card className="flex flex-col items-center gap-3 p-8 text-center">
+            <h2 className="text-xl font-semibold">{title}</h2>
+            <p className="text-sm text-slate-400">{text}</p>
+            <Link href="/" className="mt-2 font-geist-mono text-sm text-nyx-violet hover:underline">
+                Back to home
+            </Link>
+        </Card>
     )
 }

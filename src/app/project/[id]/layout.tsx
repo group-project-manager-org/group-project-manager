@@ -46,7 +46,7 @@ export default function ProjectLayout({
   } else {
     body = (
       <ProjectProvider value={ctx}>
-        <ProjectHeader project={ctx.project} />
+        <ProjectHeader />
         <ProjectTabs projectId={ctx.project.id} />
         <div className="px-6 py-6">{children}</div>
       </ProjectProvider>

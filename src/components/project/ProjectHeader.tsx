@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { RiArrowLeftLine, RiTeamLine } from 'react-icons/ri';
 import { AvatarStack, Button, DueBadge } from '@/components/ui';
 import UserNav from '@/components/UseNav';
-import type { ProjectSummary } from '@/lib/types';
 import MembersModal from './MembersModal';
+import { useProjectContext } from './ProjectContext';
 
-export default function ProjectHeader({ project }: { project: ProjectSummary }) {
+export default function ProjectHeader() {
+  const { project, reload } = useProjectContext();
+  const router = useRouter();
   const [membersOpen, setMembersOpen] = useState(false);
 
   return (
@@ -28,6 +31,7 @@ export default function ProjectHeader({ project }: { project: ProjectSummary }) 
         <div className="min-w-0">
           <p className="mb-1 font-geist-mono text-sm text-nyx-violet">Project</p>
           <h1 className="truncate text-3xl font-semibold tracking-tight">{project.project_name}</h1>
+          {project.description && <p className="mt-1 max-w-2xl text-sm text-slate-400">{project.description}</p>}
           <DueBadge date={project.due_date} className="mt-2" />
         </div>
 
@@ -40,7 +44,13 @@ export default function ProjectHeader({ project }: { project: ProjectSummary }) 
         </div>
       </div>
 
-      <MembersModal open={membersOpen} onClose={() => setMembersOpen(false)} members={project.members} />
+      <MembersModal
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        project={project}
+        onChanged={reload}
+        onLeft={() => router.push('/')}
+      />
     </header>
   );
 }

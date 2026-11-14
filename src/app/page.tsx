@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import GroupAssignment from '@/components/GroupAssignment';
-import UserNav from '@/components/UseNav';
+import AppNav from '@/components/AppNav';
 import { EmptyState, ErrorBanner, LoadingBlock } from '@/components/ui';
 import { useMyProjects } from '@/hooks/useMyProjects';
 import { daysUntil } from '@/lib/utils/dates';
@@ -45,7 +45,7 @@ export default function Home() {
     list = (
       <>
         {upcoming.map((p) => (
-          <GroupAssignment key={p.id} project={p} onDelete={remove} />
+          <GroupAssignment key={p.id} project={p} onDelete={remove} onMembersChanged={reload} />
         ))}
         {pastDue.length > 0 && (
           <>
@@ -53,7 +53,7 @@ export default function Home() {
               Past due
             </h2>
             {pastDue.map((p) => (
-              <GroupAssignment key={p.id} project={p} onDelete={remove} />
+              <GroupAssignment key={p.id} project={p} onDelete={remove} onMembersChanged={reload} />
             ))}
           </>
         )}
@@ -65,13 +65,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-nyx-bg text-slate-100">
-      <nav className="flex items-center justify-between border-b border-nyx-border px-6 py-4">
-        <div>
-          <p className="text-lg font-semibold tracking-tight">Group Project Manager</p>
-          <p className="text-sm text-slate-400">Keep your team aligned and moving forward.</p>
-        </div>
-        <UserNav />
-      </nav>
+      <AppNav />
 
       <section className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-20">
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">

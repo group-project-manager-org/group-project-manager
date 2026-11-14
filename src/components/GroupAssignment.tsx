@@ -12,10 +12,12 @@ export interface GroupAssignmentProps {
   project: ProjectSummary;
   /** Deletes the project. May throw; the confirm dialog shows the error. */
   onDelete: (id: ID) => Promise<void>;
+  /** Members were added/removed or the user left: reload the list. */
+  onMembersChanged: () => void | Promise<void>;
 }
 
 /** Project card on the home page. Clicking it opens the project. */
-export default function GroupAssignment({ project, onDelete }: GroupAssignmentProps) {
+export default function GroupAssignment({ project, onDelete, onMembersChanged }: GroupAssignmentProps) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
@@ -80,7 +82,16 @@ export default function GroupAssignment({ project, onDelete }: GroupAssignmentPr
         onConfirm={() => onDelete(project.id)}
         onCancel={() => setConfirmOpen(false)}
       />
-      <MembersModal open={membersOpen} onClose={() => setMembersOpen(false)} members={project.members} />
+      <MembersModal
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        project={project}
+        onChanged={onMembersChanged}
+        onLeft={() => {
+          setMembersOpen(false);
+          void onMembersChanged();
+        }}
+      />
     </div>
   );
 }

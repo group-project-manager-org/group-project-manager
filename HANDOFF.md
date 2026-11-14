@@ -77,6 +77,11 @@
   - Home page (`src/app/page.tsx`) uses `listMyProjects` via `useMyProjects()`; no direct Supabase queries left there. Upcoming projects sorted by due date, overdue ones grouped under "Past due". Loading / empty / error states.
   - `GroupAssignment` now takes a `ProjectSummary`: real name, `DueBadge`, `AvatarStack`, constellation progress meter (`src/components/ConstellationMeter.tsx`, 10 stars). Owner-only three-dot menu (Edit / Delete with `ConfirmDialog`) and "+" (opens members modal). Delete removes the card without a reload.
   - **Until B2 + B4 are done, the home page shows a "not implemented" error unless `NEXT_PUBLIC_USE_MOCKS=1`.** Backend: `listMyProjects` needs `my_role`, `members`, `task_total`, `task_done`, `progress` filled, since the card relies on all of them.
+- [2026-11-14] **F3 done.** Mocks still used for: `createProject`, `updateProject`, `removeMember`, `addMemberByEmail`, `searchUsers` (plus the F1/F2 ones). All mutations go through `src/hooks/useProjectActions.ts`, so switching off mocks is one flag.
+  - Add/edit pages share `src/components/ProjectForm.tsx`: name (required, ≤200), description (optional, ≤1000), due date (`min=todayYmd()`, re-validated on submit; edit may keep an existing past date). Inline field errors; save errors shown above the button. Create → `createProject(…, actor)` → `/project/[id]`. Edit → `getProject` + `updateProject`, owner only (non-owners see a message). The unused group-members field is gone. No direct Supabase queries left in either page.
+  - Members modal (`src/components/project/MembersModal.tsx`), opened from the home card "+" (owner) and the project header: list with avatar/name/role; owner can Remove non-owners, members can Leave (then go home). Confirmation is inline in the row rather than a second dialog (stacked modals would both close on Esc). Owner gets an email box: `searchUsers` debounced 300 ms from 3 chars, click a suggestion or type the full email + Add (`addMemberByEmail`); `ApiError` messages shown inline.
+  - `src/components/AppNav.tsx`: shared top bar for home / add / edit.
+  - Backend: the UI expects `searchUsers` to return non-members too (it hides existing members itself), and `addMemberByEmail` errors to be `{ error }` text that's safe to show (404 "No NYX account with that email", 409 already a member).
 
 ## Contract change requests
 

@@ -6,7 +6,8 @@
  * Data lives in memory, so changes (e.g. deleting a project) last until a
  * full page refresh.
  */
-import type { Actor, ID, Member, ProjectSummary } from '@/lib/types';
+import { ApiError, type UserSearchResult } from '@/lib/api';
+import type { Actor, ID, Member, Project, ProjectSummary } from '@/lib/types';
 
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === '1';
 
@@ -85,7 +86,10 @@ function projects(actor: Actor | null): ProjectSummary[] {
 /** Mock for listMyProjects: sorted by due_date ascending. */
 export async function mockListMyProjects(actor: Actor | null): Promise<ProjectSummary[]> {
   await delay();
-  return [...projects(actor)].sort((a, b) => a.due_date.localeCompare(b.due_date));
+  // Copies, so React sees new objects after a mock mutation.
+  return projects(actor)
+    .map((p) => ({ ...p }))
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
 }
 
 /**
@@ -96,8 +100,101 @@ export async function mockGetProject(id: ID, actor: Actor | null): Promise<Proje
   await delay();
   if (id === 404) return null;
   const found = projects(actor).find((p) => p.id === id);
-  if (found) return found;
+  if (found) return { ...found };
   return buildProject(id, { name: `Mock project #${id}`, dueInDays: 5, othersCount: 4, iAmOwner: true, tasks: [3, 8] }, actor);
+}
+
+/** Mock for createProject. Adds the caller as owner, like the create_project RPC. */
+export async function mockCreateProject(
+  input: { project_name: string; description?: string; due_date: string },
+  actor: Actor,
+): Promise<Project> {
+  await delay();
+  const list = projects(actor);
+  const id = Math.max(0, ...list.map((p) => p.id)) + 1;
+  const now = new Date().toISOString();
+  const project: ProjectSummary = {
+    id,
+    user_id: actor.user_id,
+    project_name: input.project_name,
+    description: input.description ?? null,
+    due_date: input.due_date,
+    created_at: now,
+    members: [{ project_id: id, ...me(actor), role: 'owner', joined_at: now }],
+    task_total: 0,
+    task_done: 0,
+    progress: 0,
+    my_role: 'owner',
+  };
+  list.push(project);
+  return { ...project };
+}
+
+/** Mock for updateProject. Owner-only, like the real RLS. */
+export async function mockUpdateProject(
+  id: ID,
+  patch: Partial<Pick<Project, 'project_name' | 'description' | 'due_date'>>,
+): Promise<Project> {
+  await delay();
+  const p = store?.find((x) => x.id === id);
+  if (!p) throw new Error('Project not found.');
+  if (p.my_role !== 'owner') throw new Error('Only the project owner can edit it.');
+  Object.assign(p, patch);
+  return { ...p };
+}
+
+/** Fake NYX accounts that the member search can find. */
+const DIRECTORY: UserSearchResult[] = [
+  ...OTHERS.map((o) => ({
+    ...o,
+    image_url: null,
+    email: `${o.display_name.split(' ')[0].toLowerCase()}@example.com`,
+  })),
+  { user_id: 'mock_priya', display_name: 'Priya Singh', image_url: null, email: 'priya@example.com' },
+  { user_id: 'mock_noah', display_name: 'Noah Kim', image_url: null, email: 'noah@example.com' },
+];
+
+/** Mock for searchUsers: email prefix match, up to 5. */
+export async function mockSearchUsers(q: string): Promise<UserSearchResult[]> {
+  await delay(200);
+  const needle = q.trim().toLowerCase();
+  if (needle.length < 3) throw new ApiError('Type at least 3 characters', 400);
+  return DIRECTORY.filter((u) => u.email.startsWith(needle)).slice(0, 5);
+}
+
+/** Mock for addMemberByEmail: same errors as the real route. */
+export async function mockAddMemberByEmail(projectId: ID, email: string): Promise<Member> {
+  await delay();
+  const p = store?.find((x) => x.id === projectId);
+  if (!p) throw new ApiError('Project not found', 404);
+  if (p.my_role !== 'owner') throw new ApiError('Only the project owner can add members', 403);
+  const user = DIRECTORY.find((u) => u.email === email.trim().toLowerCase());
+  if (!user) throw new ApiError('No NYX account with that email', 404);
+  if (p.members.some((m) => m.user_id === user.user_id)) throw new ApiError('Already a member of this project', 409);
+  const member: Member = {
+    project_id: projectId,
+    user_id: user.user_id,
+    display_name: user.display_name,
+    image_url: user.image_url,
+    role: 'member',
+    joined_at: new Date().toISOString(),
+  };
+  p.members = [...p.members, member];
+  return member;
+}
+
+/** Mock for removeMember: owner removes others, a member removes themself (leave). */
+export async function mockRemoveMember(projectId: ID, userId: string, actor: Actor | null): Promise<void> {
+  await delay();
+  const p = store?.find((x) => x.id === projectId);
+  if (!p) throw new Error('Project not found.');
+  const target = p.members.find((m) => m.user_id === userId);
+  if (!target) return;
+  const isSelf = userId === me(actor).user_id;
+  if (target.role === 'owner') throw new Error("The owner can't be removed.");
+  if (!isSelf && p.my_role !== 'owner') throw new Error('Only the project owner can remove members.');
+  p.members = p.members.filter((m) => m.user_id !== userId);
+  if (isSelf) store = (store ?? []).filter((x) => x.id !== projectId);
 }
 
 /** Mock for deleteProject. Owner-only, like the real RLS. */
