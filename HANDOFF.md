@@ -195,6 +195,7 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
+- Fix owners shown as "Owner": add `SUPABASE_SECRET_KEY` to `.env.local`, then run `node --env-file=.env.local scripts/backfill-member-names.mjs`. It copies real names and avatars from Clerk into the `project_members` rows that 0001 backfilled as 'Owner'. Projects created through the current form already store the real name.
 - For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.
 - After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
