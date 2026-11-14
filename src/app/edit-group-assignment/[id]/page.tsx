@@ -7,6 +7,7 @@ import UserNav from "../../../components/UseNav";
 import { use } from "react";
 import { useRouter } from 'next/navigation'
 import {useEffect, useState} from 'react'
+import { LoadingBlock } from '@/components/ui'
 
 
 export default function EditGrpAssignment({ params }: {params: Promise<{ id: string }>;
@@ -21,7 +22,7 @@ export default function EditGrpAssignment({ params }: {params: Promise<{ id: str
     const router = useRouter()
 
 
-    const { user } = useUser();
+    const { user, isLoaded } = useUser();
 
     useEffect(() => {
           const fetchProjects = async () => {
@@ -36,9 +37,13 @@ export default function EditGrpAssignment({ params }: {params: Promise<{ id: str
           fetchProjects()
         }, [])
     
-    if(!user) {
-        alert("You must login first!!!!")
-        return
+    if (!isLoaded || !user) {
+        // proxy.ts already requires sign-in, so this is only visible while Clerk loads.
+        return (
+            <main className="min-h-screen bg-nyx-bg text-slate-100">
+                <LoadingBlock />
+            </main>
+        )
     }
 
     function getDateString() {

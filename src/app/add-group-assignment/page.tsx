@@ -6,6 +6,7 @@ import { useUser  } from "@clerk/nextjs";
 import Link from 'next/link'
 import UserNav from "../../components/UseNav";
 import { useRouter } from 'next/navigation'
+import { LoadingBlock } from '@/components/ui'
 
 export default function AddGrpAssignment() {
     const [name, setName] = useState('')
@@ -15,10 +16,14 @@ export default function AddGrpAssignment() {
     const supabase = useSupabase()
     const router = useRouter()
 
-    const { user } = useUser();
-    if(!user) {
-        alert("You must login first!!!!")
-        return
+    const { user, isLoaded } = useUser();
+    if (!isLoaded || !user) {
+        // proxy.ts already requires sign-in, so this is only visible while Clerk loads.
+        return (
+            <main className="min-h-screen bg-nyx-bg text-slate-100">
+                <LoadingBlock />
+            </main>
+        )
     }
 
     function getDateString() {

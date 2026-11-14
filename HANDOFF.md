@@ -14,13 +14,22 @@
 - Next: B1 (baseline migration and auth README), then B2 (core schema and RLS), then B4.
 
 ## Frontend
+- [2026-11-14] **F0 done.**
+  - `src/components/ui/`: Button, Card, AddButton, Modal, Menu, Avatar, AvatarStack, Badge, StatusBadge (also a status dropdown when given `onChange`), PriorityTag, DueBadge, Spinner/LoadingBlock, EmptyState, ErrorBanner, ConfirmDialog. Import from `@/components/ui`.
+  - `src/hooks/`: `useActor()` → `Actor | null`, `useAsync(fn, deps, enabled?)` → `{ data, error, loading, reload, setData }`, `useDismiss` (Esc / outside click).
+  - Tailwind tokens added as `nyx-*` colours (`bg-nyx-card`, `text-nyx-violet`, …) and `font-geist-mono` now actually works (it was used across the app but never defined).
+  - Removed the `alert()` calls on the add/edit pages (bug 3); they show a loading state while Clerk loads.
+  - Uses `@/lib/types` and `@/lib/utils/dates` from B0 directly.
 
 ## Contract change requests
 
 ## Build blockers (frontend-owned, existed before B0)
-`npm run build` fails on 2 errors, neither of them in `src/lib`:
-- `src/app/project/[id]/page.tsx:8`: imports `Task` from `TaskCard`, which doesn't export it. This is bug 1; fix it by importing from `@/lib/types`.
-- `src/app/project/[id]/files/page.tsx` is an empty file, so it is "not a module". It needs a default-export page (F7, or a stub for now).
+Both fixed in F0; `npm run build` passes.
+- `src/app/project/[id]/page.tsx:8` (bug 1): `TaskCard` now exports its temporary mock `Task` type so the page compiles. The real fix (TaskCard using `Task` from `@/lib/types`) comes with F4, because the mock shape differs (inline `comments` array).
+- `src/app/project/[id]/files/page.tsx`: now a placeholder page until F7.
+
+## Notes for backend
+- `npm run build` logs `Failed to set initial Realtime auth token ... clerk_runtime_not_browser` from `src/lib/supabaseClient.tsx` during prerender. Harmless, but the client probably shouldn't call `getToken()` on the server (e.g. skip `accessToken` when `typeof window === 'undefined'`).
 
 ## Manual steps for the user
-- `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check.
+- `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.

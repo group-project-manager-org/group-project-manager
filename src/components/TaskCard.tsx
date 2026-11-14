@@ -12,7 +12,8 @@ type Comment = {
   created_at: string
 }
 
-type Task = {
+// Temporary mock shape. F4 switches TaskCard to `Task` from '@/lib/types'.
+export type Task = {
   id: number
   title: string
   status: 'not_started' | 'in_progress' | 'review' | 'done'
