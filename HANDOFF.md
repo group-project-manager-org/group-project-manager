@@ -65,6 +65,10 @@
   - Removed the copied header/nav/fetch from the Tasks page (bugs 4, 5); Polls now gets the header too. Notes/Files are placeholders.
   - `GroupAssignment` delete / "+" / edit stop click propagation (bug 2).
   - Members button opens a read-only member list; add/remove/leave come in F3.
+- [2026-11-14] **F2 done.** Mocks still used for: `listMyProjects`, `deleteProject`, `getProject`.
+  - Home page (`src/app/page.tsx`) uses `listMyProjects` via `useMyProjects()`; no direct Supabase queries left there. Upcoming projects sorted by due date, overdue ones grouped under "Past due". Loading / empty / error states.
+  - `GroupAssignment` now takes a `ProjectSummary`: real name, `DueBadge`, `AvatarStack`, constellation progress meter (`src/components/ConstellationMeter.tsx`, 10 stars). Owner-only three-dot menu (Edit / Delete with `ConfirmDialog`) and "+" (opens members modal). Delete removes the card without a reload.
+  - **Until B2 + B4 are done, the home page shows a "not implemented" error unless `NEXT_PUBLIC_USE_MOCKS=1`.** Backend: `listMyProjects` needs `my_role`, `members`, `task_total`, `task_done`, `progress` filled, since the card relies on all of them.
 
 ## Contract change requests
 

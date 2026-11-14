@@ -19,9 +19,11 @@ export function useProject(id: ID | null) {
   const actor = useActor();
   const ready = id !== null && (!USE_MOCKS || actor !== null);
 
-  return useAsync(
+  const state = useAsync(
     () => (USE_MOCKS ? mockGetProject(id as ID, actor) : getProject(sb, id as ID)),
     [id, actor?.user_id],
     ready,
   );
+  // Waiting on the user (mock mode) counts as loading, so the layout doesn't flash "not found".
+  return { ...state, loading: state.loading || (id !== null && !ready) };
 }

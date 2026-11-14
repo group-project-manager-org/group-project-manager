@@ -1,65 +1,86 @@
-import { RiDeleteBinLine } from "react-icons/ri";
-import { FaPencil } from "react-icons/fa6";
+'use client';
+
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'
+import { RiDeleteBinLine, RiPencilLine } from 'react-icons/ri';
+import { AvatarStack, ConfirmDialog, DueBadge, Menu } from '@/components/ui';
+import MembersModal from '@/components/project/MembersModal';
+import type { ID, ProjectSummary } from '@/lib/types';
+import ConstellationMeter from './ConstellationMeter';
 
-type GroupAssignmentProps = {
-  id: string;
-  assignmentName: string;
-  dueDate: string
-  handleDelete: (id: string) => void
-};
+export interface GroupAssignmentProps {
+  project: ProjectSummary;
+  /** Deletes the project. May throw; the confirm dialog shows the error. */
+  onDelete: (id: ID) => Promise<void>;
+}
 
-export default function GroupAssignment({ id, assignmentName, dueDate, handleDelete }: GroupAssignmentProps) {
-  const today = new Date();
-  const due = new Date(dueDate);
-  due.setHours(23, 59, 0, 0);
-  const diffMs = due.getTime() - today.getTime();
-
-  const diffDays = Math.floor(diffMs/ (1000 * 60 * 60 * 24));
+/** Project card on the home page. Clicking it opens the project. */
+export default function GroupAssignment({ project, onDelete }: GroupAssignmentProps) {
   const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const isOwner = project.my_role === 'owner';
+  const href = `/project/${project.id}`;
 
   return (
-    <div onClick = {() => {router.push(`/project/${id}`)}}className="mx-auto mb-4 flex w-full max-w-3xl items-center gap-4 rounded-2xl border border-[#2C2650] bg-[#161229] p-4 transition-colors hover:border-[#8B6FFF]/50">
-      {/* progress ring */}
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-[#2C2650]">
-        <span className="font-mono text-sm text-[#F4D58D]">10%</span>
-      </div>
-
+    <div
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${project.project_name}`}
+      onClick={() => router.push(href)}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && e.key === 'Enter') router.push(href);
+      }}
+      className="mx-auto mb-4 flex w-full max-w-3xl cursor-pointer flex-wrap items-center gap-4 rounded-2xl border border-nyx-border bg-nyx-card p-4 transition-colors hover:border-nyx-violet/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet sm:flex-nowrap"
+    >
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-lg font-semibold text-slate-100">
-          {assignmentName}
-        </h3>
-        <span className="mt-1 inline-block rounded-md bg-[#8B6FFF]/15 px-2 py-0.5 font-mono text-xs text-[#8B6FFF]">
-        Due in {diffDays} days
-        </span>
+        <h3 className="truncate text-lg font-semibold text-slate-100">{project.project_name}</h3>
+        <div className="mt-1.5 flex flex-wrap items-center gap-3">
+          <DueBadge date={project.due_date} />
+          <ConstellationMeter progress={project.progress} done={project.task_done} total={project.task_total} />
+        </div>
       </div>
 
-      {/* member avatars */}
-      <div className="flex shrink-0 -space-x-2">
-        {["A", "M", "J"].map((initial, i) => (
-          <span
-            key={i}
-            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#161229] bg-[#F4D58D] text-xs font-bold text-[#1a0d28]"
+      <div className="flex shrink-0 items-center gap-1">
+        <AvatarStack people={project.members} max={4} />
+        {isOwner && (
+          <button
+            type="button"
+            aria-label="Add member"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMembersOpen(true);
+            }}
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-slate-500 text-slate-400 hover:border-nyx-violet hover:text-nyx-violet focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nyx-violet"
           >
-            {initial}
-          </span>
-        ))}
-        <button
-          type="button"
-          aria-label="Add member"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-slate-500 text-slate-400 hover:border-[#8B6FFF] hover:text-[#8B6FFF]">
-          +
-        </button>
+            +
+          </button>
+        )}
       </div>
-      {/* stopPropagation: the whole card navigates to the project on click */}
-      <Link href = {`/edit-group-assignment/${id}`} aria-label="Edit project" onClick={(e) => e.stopPropagation()} className="shrink-0 text-slate-500 hover:text-[#6a4ee0]">
-        <FaPencil size="1.5rem"/>
-      </Link>
-      <button type="button" aria-label="Delete project" onClick = {(e) => { e.stopPropagation(); handleDelete(id) }} className="shrink-0 text-slate-500 hover:text-[#FF8A65]">
-        <RiDeleteBinLine size="1.5rem"/>
-      </button>
+
+      {isOwner && (
+        <Menu
+          label={`Options for ${project.project_name}`}
+          items={[
+            {
+              label: 'Edit',
+              icon: <RiPencilLine />,
+              onSelect: () => router.push(`/edit-group-assignment/${project.id}`),
+            },
+            { label: 'Delete', icon: <RiDeleteBinLine />, danger: true, onSelect: () => setConfirmOpen(true) },
+          ]}
+        />
+      )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete project?"
+        message={`"${project.project_name}" and all its tasks, notes, polls and files will be deleted for every member. This can't be undone.`}
+        confirmLabel="Delete project"
+        onConfirm={() => onDelete(project.id)}
+        onCancel={() => setConfirmOpen(false)}
+      />
+      <MembersModal open={membersOpen} onClose={() => setMembersOpen(false)} members={project.members} />
     </div>
   );
 }
