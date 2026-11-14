@@ -94,7 +94,17 @@
     - Calls blocked by RLS throw `NOT_FOUND`.
   - **`comments.ts`:** comments come back oldest first. Text is trimmed, and an empty comment is rejected by the DB check.
   - Tested on local PostgREST: CRUD for the owner, a member and a stranger, the assignee checks, unassign on leave, the comment count, and progress (1 of 2 done gives 50).
-- Next: B5 (polls refactor).
+- [2026-11-14] **B5 done.** No migration is needed, because 0001 already added the vote constraint, the defaults and the policies.
+  - `listPolls` makes one query (polls with their options and votes) and returns polls oldest first. Options are sorted by id.
+  - `createPoll`:
+    - trims the question and the options and drops empty options,
+    - requires 2 to 6 options, otherwise it throws `DbError` code `INVALID_INPUT`,
+    - deletes the poll again if inserting the options fails.
+  - `vote` is an upsert on `(poll_id, user_id)`, so voting again moves your vote. A vote for an option from another poll is rejected.
+  - `deletePoll` works for the author or the owner, and throws `NOT_FOUND` otherwise.
+  - Tested on local PostgREST: a member sees all votes, changing a vote, stranger blocked, owner deleting a member's poll.
+  - **Frontend:** the polls page still queries Supabase directly. Switch it to these functions in F5.
+- Next: B6 (notes).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
