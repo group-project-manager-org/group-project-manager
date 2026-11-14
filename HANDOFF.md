@@ -50,7 +50,15 @@
     - The old add/edit page queries still work, and a second `vote()` upsert changes the vote instead of adding one.
     - `verify.sql` reports FAIL when RLS is turned off.
   - `src/lib/supabaseClient.tsx`: `useSupabase()` now returns a stable client (one per component) and skips `getToken()` on the server. Both items from "Notes for backend" are fixed.
-- Next: B4 (projects and members data layer, plus the member and search API routes). It includes the `project_progress` view early, because `listMyProjects` needs it.
+- [2026-11-14] **B4 part 1: `src/lib/db/projects.ts` implemented.** It needs `0001_core.sql` to have been run. Without it, every call fails with "Could not find the function public.requesting_user_id".
+  - `listMyProjects`: explicitly filters to the caller's memberships, as well as RLS. Sorted by `due_date`.
+  - `getProject`: returns `null` when the project isn't found or the caller isn't a member.
+  - `createProject`: calls the `create_project` RPC. Errors come back as `DbError` with code `22023` and a readable message such as "Project name must be 1-200 characters".
+  - `updateProject` / `deleteProject`: throw `DbError` code `NOT_FOUND` when the caller isn't the owner, because RLS returns 0 rows.
+  - In every summary, `members` lists the owner first, then by `joined_at`.
+  - **Progress is always 0 for now:** `task_total`, `task_done` and `progress` stay 0 until the tasks table and the `project_progress` view land in B3.
+  - Tested against a local PostgREST and Postgres running 0001, using owner, member and stranger tokens.
+- Next: B4 part 2 (`members.ts`, `supabaseServer.ts`, the member and search API routes). It includes the `project_progress` view early, because `listMyProjects` needs it.
 
 ## Frontend
 - [2026-11-14] **F0 done.**
