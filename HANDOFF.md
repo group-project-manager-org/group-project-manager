@@ -104,7 +104,12 @@
   - `deletePoll` works for the author or the owner, and throws `NOT_FOUND` otherwise.
   - Tested on local PostgREST: a member sees all votes, changing a vote, stranger blocked, owner deleting a member's poll.
   - **Frontend:** the polls page still queries Supabase directly. Switch it to these functions in F5.
-- Next: B6 (notes).
+- [2026-11-14] **B6 done.** The user must run `supabase/migrations/0003_notes.sql`, then `verify.sql`.
+  - **Who can do what:** members read and create notes, any member can pin or unpin, and the author or the owner can delete.
+  - **Pinning approach** (the spec asked us to note it): the update policy lets any member update a note, and the `notes_check_update` trigger rejects changes to `content` or `color` by anyone except the author. The error is `'Only the author can edit this note'`, code `42501`. Column grants limit updates to `content`, `color` and `pinned`. Toggling the pin also updates `updated_at`.
+  - `notes.ts`: `listNotes` returns pinned notes first, then newest. Content is trimmed, and empty content is rejected by the DB check (1-1000 characters).
+  - Tested on local PostgREST: pinning someone else's note works, editing it is blocked, delete is limited to the author or the owner, and a stranger sees nothing.
+- Next: B7 (files and storage).
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -150,5 +155,6 @@ Both fixed in F0; `npm run build` passes.
 - ~~Before 0001: export policies and columns (README step 3).~~ Done 2026-11-14.
 - Run `supabase/migrations/0001_core.sql` in the SQL editor, then run `supabase/verify.sql`. Every row should say PASS.
 - Run `supabase/migrations/0002_tasks.sql`, then `supabase/verify.sql` again.
+- Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
 - After 0001: check that Supabase sees your Clerk id (`supabase/README.md` step 4).
 - `npm run lint` does not work: Next 16 removed `next lint`, and ESLint is not installed. Until that is fixed, `npm run build` is the only check. Proposed fix (needs agreement since `package.json` is shared): add `eslint` + `eslint-config-next` dev deps, an `eslint.config.mjs`, and change the script to `"lint": "eslint ."`.
