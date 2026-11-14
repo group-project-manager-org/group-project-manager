@@ -166,6 +166,30 @@
   - **No new client setup:** `useSupabase()` already passes the Clerk token to Realtime through `accessToken`.
   - **Tested** against a local Supabase Realtime server: one member saw the other member's task insert, update, subtask, note, comment and delete events. A stranger saw no insert or update events.
 - **Backend B0-B10 are all done.**
+- [2026-11-14] **Invitations (beyond the spec; the user asked for it, and I built both backend and frontend).** The user must run `supabase/migrations/0008_invitations.sql`, then `verify.sql`.
+  - **Contract change:** `POST /api/projects/[id]/members` and `addMemberByEmail` are gone. The replacements are `POST /api/projects/[id]/invitations` `{ email }`, which returns 201 `Invitation`, and `inviteByEmail(projectId, email)` in `src/lib/api.ts`.
+    - Error responses: 403 if the caller isn't the owner, 404 "No NYX account with that email", 409 if the person is already a member, already invited, or is yourself.
+  - **Type changes** in `src/lib/types.ts`: a new `Invitation` type, and `NotificationType` gains `'project_invite'`.
+  - **DB:**
+    - New `project_invitations` table. The invitee and the owner can read a row. Only the owner inserts, and never for an existing member. The invitee (decline) or the owner (cancel) deletes.
+    - `accept_invitation(id)` makes the invitee a member and deletes the invitation, in one transaction.
+    - **The owner can no longer insert into `project_members` directly**, so joining always needs the invitee's consent.
+    - Creating an invitation sends the invitee a `project_invite` notification.
+  - **`src/lib/db/invitations.ts`:** `listMyInvitations`, `listProjectInvitations` (owner), `acceptInvitation` (returns the `Member`), and `deleteInvitation` (used for both decline and cancel).
+  - **UI:**
+    - The members modal now says "Invite a member by email" and shows a "Waiting to accept" list with Cancel. Search suggestions hide people who are already members or already invited.
+    - The home page shows an **Invitations** section above the projects, with Accept and Decline. Accepting reloads the project list.
+    - The bell shows invite notifications with a mail icon. Clicking one goes to the home page's invitations and refreshes them.
+    - `useMyInvitations` refreshes every 60 s, on tab focus, and on the `nyx:invitations-changed` window event.
+  - **Mocks:** `mockAddMemberByEmail` became `mockInviteByEmail`. In mock mode the invitation lists are empty.
+  - **Tested** on local PostgREST:
+    - the owner can't add members directly,
+    - inviting, duplicate invites, and inviting by a non-owner,
+    - the invitee can't see the project before accepting, and gets the notification,
+    - another user can't accept someone else's invitation, and accepting twice fails,
+    - decline and cancel,
+    - re-inviting after someone leaves.
+  - The UI was build-checked only, not clicked through, and the route needs real Clerk to run.
 
 ## Frontend
 - [2026-11-14] **F0 done.**
@@ -229,7 +253,8 @@ Both fixed in F0; `npm run build` passes.
 - Run `supabase/migrations/0003_notes.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0005_notifications.sql`, then `supabase/verify.sql` again.
 - Run `supabase/migrations/0006_member_summaries.sql`, then `supabase/verify.sql`.
-- Run `supabase/migrations/0007_realtime.sql`, then `supabase/verify.sql` (every row should be PASS). Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
+- Run `supabase/migrations/0007_realtime.sql`, then `supabase/verify.sql` (every row should be PASS).
+- Run `supabase/migrations/0008_invitations.sql`, then `supabase/verify.sql`. After this, members join only by accepting an invitation. Set `ANTHROPIC_API_KEY` in `.env.local` and in Vercel for AI summaries.
 - Fix owners shown as "Owner": add `SUPABASE_SECRET_KEY` to `.env.local`, then run `node --env-file=.env.local scripts/backfill-member-names.mjs`. It copies real names and avatars from Clerk into the `project_members` rows that 0001 backfilled as 'Owner'. Projects created through the current form already store the real name.
 - For reminders: set `CRON_SECRET` and `SUPABASE_SECRET_KEY` (Supabase Dashboard → Project Settings → API keys → Secret key) in `.env.local` and in the Vercel project env. Never expose the secret key to the browser.
 - Run `supabase/migrations/0004_files.sql`, then `supabase/verify.sql` again. It creates the `project-files` storage bucket, so you don't need to create it in the dashboard.
